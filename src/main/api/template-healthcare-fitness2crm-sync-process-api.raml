@@ -1,0 +1,40 @@
+#%RAML 0.8
+title: template-healthcare-fitness2crm-sync-process-api
+baseUri: https://template-healthcare-fitness2crm-sync-process-api.cloudhub.io/api
+mediaType: application/json
+version: v1
+
+/patients/{patientIDType}/{patientID}:
+  uriParameters:
+    patientID:
+      type: string
+      description: Patient ID
+    patientIDType:
+      type: string
+      description: ID Type like MRN
+  /authorize:
+    displayName: Authorize Fitbit user
+    get:
+      responses:
+        302:
+  /unauthorize:
+    displayName: Unauthorize Fitbit user
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+  /migrateFitnessData:
+    displayName: Update Fitbit devices data together with activity and sleep observations for given patient
+    post:
+      description: Update Fitbit devices data together with activity and sleep observations for given patient
+      queryParameters:
+        fromDate:
+          type: string
+          example: 2016-07-18
+          required: true
+      responses:
+        200:
+          body:
+            application/json:
+              example: !include migrateFitnessData-response.json
