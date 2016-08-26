@@ -13,13 +13,13 @@ http://www.mulesoft.org/schema/mule/schedulers http://www.mulesoft.org/schema/mu
 http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/mule/objectstore/current/mule-objectstore.xsd">
     <context:property-placeholder location="mule.${mule.env}.properties, common.properties" />
 	<http:listener-config name="template-healthcare-fitness2crm-sync-process-api-httpListenerConfig" host="0.0.0.0" port="${http.port}" doc:name="HTTP Listener Configuration"/>
-    <apikit:config name="template-healthcare-fitness2crm-sync-process-api-config" raml="template-healthcare-fitness2crm-sync-process-api.raml" consoleEnabled="false" doc:name="Router"/>
-    <http:request-config name="HTTP_Conf_fitbit2fhir-observation-device-system-api" host="${fitbit2fhir.observation.device.system.api.host}" port="${fitbit2fhir.observation.device.system.api.port}" basePath="${fitbit2fhir.observation.device.system.api.basePath}" doc:name="HTTP Request Configuration" protocol="HTTPS">
+    <apikit:config name="template-healthcare-fitness2crm-sync-process-api-config" raml="healthcare-fitness2crm-sync-process-api.raml" consoleEnabled="false" doc:name="Router"/>
+    <http:request-config name="HTTP_Conf_fitbit2fhir-system-api" host="${fitbit2fhir.system.api.host}" port="${fitbit2fhir.system.api.port}" basePath="${fitbit2fhir.system.api.basePath}" doc:name="HTTP Request Configuration" protocol="HTTPS">
         <tls:context>
             <tls:trust-store path="${truststore.location}" password="${truststore.password}" type="jks" insecure="true"/>
             <tls:key-store type="jceks"/>
         </tls:context>
-        <http:raml-api-configuration location="fitbit-observation-device-api/template-healthcare-fitness2crm-sync-process-api.raml"/>
+        <http:raml-api-configuration location="healthcare-fitbit2fhir-system-api/healthcare-fitbit2fhir-system-api.raml"/>
            
     </http:request-config>
     <http:request-config name="HTTP_Conf_SFDC-system-api" host="${sfdc.system.api.host}" port="${sfdc.system.api.port}" basePath="${sfdc.system.api.basePath}" doc:name="HTTP Request Configuration" protocol="HTTPS" connectionIdleTimeout="300000" responseTimeout="-1">
@@ -39,7 +39,7 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
         <apikit:console config-ref="template-healthcare-fitness2crm-sync-process-api-config" doc:name="APIkit Console"/>
     </flow>
     <flow name="get:/patients/{patientIDType}/{patientID}/authorize:template-healthcare-fitness2crm-sync-process-api-config">
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-observation-device-system-api" path="/patients/{patientIDType}/{patientID}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/patients/{patientIDType}/{patientID}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
             <http:request-builder>
                 <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
                 <http:uri-param paramName="patientIDType" value="mrn"/>
@@ -56,7 +56,7 @@ payload.location]]></dw:set-payload>
 
     </flow>
     <flow name="get:/patients/{patientIDType}/{patientID}/unauthorize:template-healthcare-fitness2crm-sync-process-api-config">
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-observation-device-system-api" path="/patients/{patientIDType}/{patientID}/unauthorize" method="GET" doc:name="GET unauthorize call to Fitbit">
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/patients/{patientIDType}/{patientID}/unauthorize" method="GET" doc:name="GET unauthorize call to Fitbit">
             <http:request-builder>
                 <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
                 <http:uri-param paramName="patientIDType" value="mrn"/>
@@ -85,7 +85,7 @@ payload.location]]></dw:set-payload>
             <schedulers:cron-scheduler expression="0 10 0 * * ?"/>
             <logger message="Polling changes from Fitbit .... date : #[server.dateTime.format(&quot;yyyy-MM-dd&quot;)]" level="INFO" doc:name="Log poll for changes from Fitbit"/>
         </poll>
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-observation-device-system-api" path="/patients" method="GET" doc:name="GET authorized Patients from Fitbit"/>
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/patients" method="GET" doc:name="GET authorized Patients from Fitbit"/>
         <dw:transform-message doc:name="Get Patients from the response">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
@@ -101,7 +101,7 @@ payload.patients]]></dw:set-payload>
         <logger message="Poll has finished!" level="INFO" doc:name="Log 'Poll has finished' message"/>
     </flow>
     <sub-flow name="migrateFitbitFitnessDataSubFlow">
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-observation-device-system-api" path="/patients/{patientIDType}/{patientID}/devices" method="GET" doc:name="GET Devices from Fitbit">
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/patients/{patientIDType}/{patientID}/devices" method="GET" doc:name="GET Devices from Fitbit">
             <http:request-builder>
                 <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
                 <http:uri-param paramName="patientIDType" value="mrn"/>
@@ -113,7 +113,7 @@ payload.patients]]></dw:set-payload>
                 <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
             </http:request-builder>
         </http:request>
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-observation-device-system-api" path="/patients/{patientIDType}/{patientID}/observations" method="GET" doc:name="GET Observations from Fitbit">
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/patients/{patientIDType}/{patientID}/observations" method="GET" doc:name="GET Observations from Fitbit">
             <http:request-builder>
                 <http:query-param paramName="date" value="#[flowVars.fromDate]"/>
                 <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
