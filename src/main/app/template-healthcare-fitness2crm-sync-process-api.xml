@@ -13,20 +13,21 @@ http://www.mulesoft.org/schema/mule/schedulers http://www.mulesoft.org/schema/mu
 http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/mule/objectstore/current/mule-objectstore.xsd">
     <context:property-placeholder location="mule.${mule.env}.properties, common.properties" />
 	<http:listener-config name="template-healthcare-fitness2crm-sync-process-api-httpListenerConfig" host="0.0.0.0" port="${http.port}" doc:name="HTTP Listener Configuration"/>
-    <apikit:config name="template-healthcare-fitness2crm-sync-process-api-config" raml="healthcare-fitness2crm-sync-process-api.raml" consoleEnabled="false" doc:name="Router"/>
+    <apikit:config name="template-healthcare-fitness2crm-sync-process-api-config" raml="healthcare-fitness2crm-sync-process-api.raml" consoleEnabled="false" doc:name="Router">
+        <apikit:flow-mapping resource="/patients/{id}/authorize" action="get" flow-ref="get:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config"/>
+        <apikit:flow-mapping resource="/patients/{id}/unauthorize" action="get" flow-ref="get:/patients/{id}/unauthorize:template-healthcare-fitness2crm-sync-process-api-config"/>
+        <apikit:flow-mapping resource="/patients/{id}/migrateFitnessData" action="post" flow-ref="post:/patients/{id}/migrateFitnessData:template-healthcare-fitness2crm-sync-process-api-config"/>
+    </apikit:config>
     <http:request-config name="HTTP_Conf_fitbit2fhir-system-api" host="${fitbit2fhir.system.api.host}" port="${fitbit2fhir.system.api.port}" basePath="${fitbit2fhir.system.api.basePath}" doc:name="HTTP Request Configuration" protocol="HTTPS">
         <tls:context>
             <tls:trust-store path="${truststore.location}" password="${truststore.password}" type="jks" insecure="true"/>
             <tls:key-store type="jceks"/>
         </tls:context>
-        <http:raml-api-configuration location="healthcare-fitbit2fhir-system-api/healthcare-fitbit2fhir-system-api.raml"/>
+        <http:raml-api-configuration location="healthcare-fitbit2fhir-system-api/fitbit2fhir-system-api.raml"/>
            
     </http:request-config>
-    <http:request-config name="HTTP_Conf_SFDC-system-api" host="${sfdc.system.api.host}" port="${sfdc.system.api.port}" basePath="${sfdc.system.api.basePath}" doc:name="HTTP Request Configuration" protocol="HTTPS" connectionIdleTimeout="300000" responseTimeout="-1">
-        <tls:context>
-            <tls:trust-store path="${truststore.location}" password="${truststore.password}" type="jks" insecure="true"/>
-        </tls:context>
-        <http:raml-api-configuration location="sfdc-system-api/healthcare-fhir2sfdchealth-ehr-system-api.raml"/>
+    <http:request-config name="HTTP_Conf_SFDC-system-api" host="${sfdc.system.api.host}" port="${sfdc.system.api.port}" basePath="${sfdc.system.api.basePath}" doc:name="HTTP Request Configuration"  connectionIdleTimeout="300000" responseTimeout="-1">
+        <http:raml-api-configuration location="healthcare-system-api/healthcare-system-api.raml"/>
     </http:request-config>
 
     <flow name="template-healthcare-fitness2crm-sync-process-api-main">
@@ -38,11 +39,10 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
         <http:listener config-ref="template-healthcare-fitness2crm-sync-process-api-httpListenerConfig" path="/console/*" doc:name="HTTP"/>
         <apikit:console config-ref="template-healthcare-fitness2crm-sync-process-api-config" doc:name="APIkit Console"/>
     </flow>
-    <flow name="get:/patients/{patientIDType}/{patientID}/authorize:template-healthcare-fitness2crm-sync-process-api-config">
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/patients/{patientIDType}/{patientID}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
+    <flow name="get:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config">
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
             <http:request-builder>
-                <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
-                <http:uri-param paramName="patientIDType" value="mrn"/>
+                <http:uri-param paramName="id" value="#[flowVars.id]"/>
             </http:request-builder>
         </http:request>
         <dw:transform-message doc:name="Get location from the response">
@@ -55,21 +55,19 @@ payload.location]]></dw:set-payload>
         <set-property propertyName="location" value="#[payload]" doc:name="Set location"/>
 
     </flow>
-    <flow name="get:/patients/{patientIDType}/{patientID}/unauthorize:template-healthcare-fitness2crm-sync-process-api-config">
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/patients/{patientIDType}/{patientID}/unauthorize" method="GET" doc:name="GET unauthorize call to Fitbit">
+    <flow name="get:/patients/{id}/unauthorize:template-healthcare-fitness2crm-sync-process-api-config">
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/unauthorize" method="GET" doc:name="GET unauthorize call to Fitbit">
             <http:request-builder>
-                <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
-                <http:uri-param paramName="patientIDType" value="mrn"/>
+                <http:uri-param paramName="id" value="#[flowVars.id]"/>
             </http:request-builder>
         </http:request>
 
     </flow>
-    <flow name="post:/patients/{patientIDType}/{patientID}/migrateFitnessData:template-healthcare-fitness2crm-sync-process-api-config">
+    <flow name="post:/patients/{id}/migrateFitnessData:template-healthcare-fitness2crm-sync-process-api-config">
         <set-variable variableName="fromDate" value="ge#[message.inboundProperties.'http.query.params'.fromDate]" doc:name="Set fromDate"/>
         <async doc:name="Async">
             <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
         </async>
-<!--         <flow-ref name="syncFitbitFitnessDataFlow" doc:name="Call syncFitbitFitnessDataFlow"/> -->
         <dw:transform-message doc:name="Prepare JSON response">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
@@ -85,7 +83,7 @@ payload.location]]></dw:set-payload>
             <schedulers:cron-scheduler expression="0 10 0 * * ?"/>
             <logger message="Polling changes from Fitbit .... date : #[server.dateTime.format(&quot;yyyy-MM-dd&quot;)]" level="INFO" doc:name="Log poll for changes from Fitbit"/>
         </poll>
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/patients" method="GET" doc:name="GET authorized Patients from Fitbit"/>
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient" method="GET" doc:name="GET authorized Patients from Fitbit"/>
         <dw:transform-message doc:name="Get Patients from the response">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
@@ -93,39 +91,93 @@ payload.location]]></dw:set-payload>
 payload.patients]]></dw:set-payload>
         </dw:transform-message>
         <foreach collection="#[payload]" doc:name="For Each Patient">
-            <set-variable variableName="fromDate" value="eq#[server.dateTime.format(&quot;yyyy-MM-dd&quot;)]" doc:name="Set fromDate"/>
-            <set-variable variableName="patientID" value="#[payload]" doc:name="Set patientID"/>
-            <logger message="ObservationDate: #[flowVars.fromDate] ** PatientID: #[flowVars.patientID]" level="INFO" doc:name="Log fromDate and patientID variables"/>
+            <set-variable variableName="fromDate" value="eq#[server.dateTime.format(&quot;yyyy-MM-dd&quot;)]" doc:name="Set fromDate variable"/>
+            <set-variable variableName="id" value="#[payload]" doc:name="Set id variable"/>
+            <logger message="ObservationDate: #[flowVars.fromDate] ** PatientID: #[flowVars.id]" level="INFO" doc:name="Log fromDate and id variables"/>
             <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
         </foreach>
         <logger message="Poll has finished!" level="INFO" doc:name="Log 'Poll has finished' message"/>
     </flow>
     <sub-flow name="migrateFitbitFitnessDataSubFlow">
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/patients/{patientIDType}/{patientID}/devices" method="GET" doc:name="GET Devices from Fitbit">
+        <flow-ref name="migrateDevicesSubFlow" doc:name="migrateDevicesSubFlow"/>
+        <flow-ref name="migrateObservationsSubFlow" doc:name="migrateObservationsSubFlow"/>
+    </sub-flow>
+    <sub-flow name="migrateDevicesSubFlow">
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/Device" method="GET" doc:name="GET Devices from Fitbit">
             <http:request-builder>
-                <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
-                <http:uri-param paramName="patientIDType" value="mrn"/>
+                <http:uri-param paramName="id" value="#[flowVars.id]"/>
             </http:request-builder>
         </http:request>
-        <http:request config-ref="HTTP_Conf_SFDC-system-api" path="/patients/{patientIDType}/{patientID}/devices" method="PUT" doc:name="PUT Devices to SFDC">
-            <http:request-builder>
-                <http:uri-param paramName="patientIDType" value="mrn"/>
-                <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
-            </http:request-builder>
-        </http:request>
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/patients/{patientIDType}/{patientID}/observations" method="GET" doc:name="GET Observations from Fitbit">
+        <dw:transform-message doc:name="Get Devices from the response">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload.entry.resource when (payload.total > 0) otherwise []]]></dw:set-payload>
+        </dw:transform-message>
+        <foreach collection="payload" doc:name="For Each Device">
+            <set-variable variableName="device" value="#[payload]" doc:name="Set Device variable"/>
+            <http:request config-ref="HTTP_Conf_SFDC-system-api" path="/Device" method="GET" doc:name="GET Device from SFDC">
+                <http:request-builder>
+                    <http:query-param paramName="identifier" value="#[flowVars.device.id]"/>
+                </http:request-builder>
+            </http:request>
+            <dw:transform-message doc:name="Get existing Device Id from JSON response">
+                <dw:set-variable variableName="existingDeviceId"><![CDATA[%dw 1.0
+%output application/java
+---
+payload.entry.resource[0].id when (payload.total > 0) otherwise null]]></dw:set-variable>
+            </dw:transform-message>
+            <choice doc:name="Does Device already exist?">
+                <when expression="#[flowVars.existingDeviceId == null]">
+                    <logger message="POSTing Device : #[flowVars.device]" level="INFO" doc:name="Log POST operation"/>
+                    <dw:transform-message doc:name="Prepare Device for POST in FHIR JSON structure">
+                        <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+flowVars.device]]></dw:set-payload>
+                    </dw:transform-message>
+                    <http:request config-ref="HTTP_Conf_SFDC-system-api" path="/Device" method="POST" doc:name="POST Device into SFDC"/>
+                </when>
+                <otherwise>
+                    <logger message="PUTing Device: #[flowVars.device]" level="INFO" doc:name="Log PUT operation"/>
+                    <dw:transform-message doc:name="Prepare Device for PUT in FHIR JSON structure">
+                        <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+flowVars.device]]></dw:set-payload>
+                    </dw:transform-message>
+                    <http:request config-ref="HTTP_Conf_SFDC-system-api" path="/Device/{id}" method="PUT" doc:name="PUT Device into SFDC">
+                        <http:request-builder>
+                            <http:uri-param paramName="id" value="#[flowVars.existingDeviceId]"/>
+                        </http:request-builder>
+                    </http:request>
+                </otherwise>
+            </choice>
+        </foreach>
+    </sub-flow>
+    <sub-flow name="migrateObservationsSubFlow">
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/Observation" method="GET" doc:name="GET Observations from Fitbit">
             <http:request-builder>
                 <http:query-param paramName="date" value="#[flowVars.fromDate]"/>
-                <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
-                <http:uri-param paramName="patientIDType" value="mrn"/>
+                <http:uri-param paramName="id" value="#[flowVars.id]"/>
             </http:request-builder>
         </http:request>
-        <http:request config-ref="HTTP_Conf_SFDC-system-api" path="/patients/{patientIDType}/{patientID}/observations" method="POST" doc:name="POST Observations to SFDC">
-            <http:request-builder>
-                <http:uri-param paramName="patientIDType" value="mrn"/>
-                <http:uri-param paramName="patientID" value="#[flowVars.patientID]"/>
-            </http:request-builder>
-        </http:request>
+        <dw:transform-message doc:name="Get Observations from the response">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload.entry.resource when (payload.total > 0) otherwise []]]></dw:set-payload>
+        </dw:transform-message>
+        <foreach collection="payload" doc:name="For Each Observation">
+            <logger message="POSTing Observation: #[payload]" level="INFO" doc:name="Log POST operation"/>
+            <dw:transform-message doc:name="Prepare Observation in FHIR JSON structure">
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload]]></dw:set-payload>
+            </dw:transform-message>
+            <http:request config-ref="HTTP_Conf_SFDC-system-api" path="/Observation" method="POST" doc:name="POST Observation to SFDC"/>
+        </foreach>
     </sub-flow>
 
     <apikit:mapping-exception-strategy name="template-healthcare-fitness2crm-sync-process-api-apiKitGlobalExceptionMapping">

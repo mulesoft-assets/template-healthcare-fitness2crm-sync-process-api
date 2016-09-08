@@ -1,17 +1,14 @@
-#%RAML 0.8
+#%RAML 1.0
 title: template-healthcare-fitness2crm-sync-process-api
 baseUri: https://template-healthcare-fitness2crm-sync-process-api.cloudhub.io/api
 mediaType: application/json
 version: v1
 
-/patients/{patientIDType}/{patientID}:
+/patients/{id}:
   uriParameters:
-    patientID:
-      type: string
+    id:
+      type: string|integer
       description: Patient ID
-    patientIDType:
-      type: string
-      description: ID Type like MRN
   /authorize:
     displayName: Authorize Fitbit user
     get:
