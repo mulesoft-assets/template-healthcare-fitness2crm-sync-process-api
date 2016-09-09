@@ -78,6 +78,13 @@ payload.location]]></dw:set-payload>
         </dw:transform-message>
 
     </flow>
+    <flow name="get:/patients/{id}:template-healthcare-fitness2crm-sync-process-api-config">
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}" method="GET" doc:name="GET Patient authorization status">
+            <http:request-builder>
+                <http:uri-param paramName="id" value="#[flowVars.id]"/>
+            </http:request-builder>
+        </http:request>
+    </flow>
     <flow name="syncFitbitFitnessDataFlow" initialState="started">
         <poll doc:name="Poll ">
             <schedulers:cron-scheduler expression="0 10 0 * * ?"/>

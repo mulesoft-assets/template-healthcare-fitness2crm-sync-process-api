@@ -73,9 +73,11 @@ types:
   FitbitMessage:                !include dataTypes/fitbit/FitbitMessage.raml
   FitbitLocation:               !include dataTypes/fitbit/FitbitLocation.raml
   FitbitAuthorizedPatients:     !include dataTypes/fitbit/FitbitAuthorizedPatients.raml
+  FitbitPatientAuthorizationInfo: !include dataTypes/fitbit/FitbitPatientAuthorizationInfo.raml
 
 ### API definition ###
 /Patient:
+  displayName: Patients authorized to Fitbit
   get:
     responses: 
       200:  
@@ -83,7 +85,19 @@ types:
           application/json:
             type: FitbitAuthorizedPatients
   /{id}:
+    displayName: Get Authorization info about Patient
+    uriParameters:
+      id:
+        type: string|integer
+        description: Patient ID
+    get:
+      responses: 
+        200:  
+          body: 
+            application/json:
+              type: FitbitPatientAuthorizationInfo
     /authorize:
+      displayName: Authorize Fitbit user
       get:
         responses: 
           200:  
@@ -91,6 +105,7 @@ types:
               application/json:
                 type: FitbitLocation
     /unauthorize:
+      displayName: Unauthorize Fitbit user
       get:
         responses: 
           200:  
@@ -98,13 +113,22 @@ types:
               application/json:
                 type: FitbitMessage
     /Observation:
+      displayName: Fitbit observations in FHIR structure
       get:
+        description: Get fitbit activity and sleep observations for given patient in FHIR structure
+        queryParameters:
+          date:
+            description: Effective date of Observations (if starting with "eq" match exact date, if starting with "ge" match range sice specified date until today)
+            type: string
+            example: eq2016-07-18
+            pattern: ^(eq|ge)(((19|20)\d\d)-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01]))$
         responses:
           200:  
             body: 
               application/json:
                 type: ObservationBundle
     /Device:
+      displayName: Fitbit devices in FHIR structure
       get:
         responses: 
           200:  
