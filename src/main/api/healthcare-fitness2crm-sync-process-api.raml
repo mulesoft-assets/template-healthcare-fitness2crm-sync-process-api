@@ -5,7 +5,7 @@ mediaType: application/json
 version: v1
 
 /patients/{id}:
-  displayName: Check if Patient is authorized to Fitbit
+  displayName: Check if Patient(User) is authorized to Fitbit
   uriParameters:
     id:
       type: string|integer
@@ -21,6 +21,12 @@ version: v1
     get:
       responses:
         302:
+    post:
+      responses:
+        200:
+          body:
+            application/json: 
+             example: !include postPatientAuthorize-response.json
   /unauthorize:
     displayName: Unauthorize Fitbit user
     get:
@@ -28,6 +34,7 @@ version: v1
         200:
           body:
             application/json:
+              example: !include getPatientUnauthorize-response.json 
   /migrateFitnessData:
     displayName: Update Fitbit devices data together with activity and sleep observations for given patient
     post:

@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:objectstore="http://www.mulesoft.org/schema/mule/objectstore" xmlns:schedulers="http://www.mulesoft.org/schema/mule/schedulers" xmlns:context="http://www.springframework.org/schema/context"
+<mule xmlns:api-platform-gw="http://www.mulesoft.org/schema/mule/api-platform-gw"
+	xmlns:objectstore="http://www.mulesoft.org/schema/mule/objectstore" xmlns:schedulers="http://www.mulesoft.org/schema/mule/schedulers" xmlns:context="http://www.springframework.org/schema/context"
 	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
-	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/api-platform-gw http://www.mulesoft.org/schema/mule/api-platform-gw/current/mule-api-platform-gw.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
 http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
@@ -11,9 +13,20 @@ http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/m
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
 http://www.mulesoft.org/schema/mule/schedulers http://www.mulesoft.org/schema/mule/schedulers/current/mule-schedulers.xsd
 http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/mule/objectstore/current/mule-objectstore.xsd">
+    
+    <api-platform-gw:api id="${api.id}" apiName="${api.name}" version="${api.version}" flowRef="template-healthcare-fitness2crm-sync-process-api-main" doc:name="API Autodiscovery" create="true" ></api-platform-gw:api>
+    
+    
     <context:property-placeholder location="mule.${mule.env}.properties, common.properties" />
-	<http:listener-config name="template-healthcare-fitness2crm-sync-process-api-httpListenerConfig" host="0.0.0.0" port="${http.port}" doc:name="HTTP Listener Configuration"/>
-    <apikit:config name="template-healthcare-fitness2crm-sync-process-api-config" raml="healthcare-fitness2crm-sync-process-api.raml" consoleEnabled="false" doc:name="Router">
+    
+    <http:listener-config name="template-healthcare-fitness2crm-sync-process-api-httpListenerConfig" host="0.0.0.0" port="${https.port}" doc:name="HTTP Listener Configuration" protocol="HTTPS">
+		<tls:context>
+            <tls:key-store type="jks" path="${keystore.location}" alias="${key.alias}" keyPassword="${key.password}" password="${keystore.password}"/>
+        </tls:context>
+	</http:listener-config>
+    
+    <apikit:config name="template-healthcare-fitness2crm-sync-process-api-config" raml="healthcare-fitness2crm-sync-process-api.raml" consoleEnabled="true" doc:name="Router" consolePath="console">
+        <apikit:flow-mapping resource="/patients/{id}/authorize" action="post" flow-ref="post:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config"/>
         <apikit:flow-mapping resource="/patients/{id}/authorize" action="get" flow-ref="get:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config"/>
         <apikit:flow-mapping resource="/patients/{id}/unauthorize" action="get" flow-ref="get:/patients/{id}/unauthorize:template-healthcare-fitness2crm-sync-process-api-config"/>
         <apikit:flow-mapping resource="/patients/{id}/migrateFitnessData" action="post" flow-ref="post:/patients/{id}/migrateFitnessData:template-healthcare-fitness2crm-sync-process-api-config"/>
@@ -35,9 +48,20 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
         <apikit:router config-ref="template-healthcare-fitness2crm-sync-process-api-config" doc:name="APIkit Router"/>
         <exception-strategy ref="template-healthcare-fitness2crm-sync-process-api-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy"/>
     </flow>
-    <flow name="template-healthcare-fitness2crm-sync-process-api-console">
-        <http:listener config-ref="template-healthcare-fitness2crm-sync-process-api-httpListenerConfig" path="/console/*" doc:name="HTTP"/>
-        <apikit:console config-ref="template-healthcare-fitness2crm-sync-process-api-config" doc:name="APIkit Console"/>
+
+    <flow name="post:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config">
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
+            <http:request-builder>
+                <http:uri-param paramName="id" value="#[flowVars.id]"/>
+            </http:request-builder>
+        </http:request>
+        <dw:transform-message doc:name="Get location from the response">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+location : payload.location]]></dw:set-payload>
+        </dw:transform-message>
+
     </flow>
     <flow name="get:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config">
         <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
@@ -53,7 +77,6 @@ payload.location]]></dw:set-payload>
         </dw:transform-message>
         <set-property propertyName="http.status" value="302" doc:name="Set HTTP status"/>
         <set-property propertyName="location" value="#[payload]" doc:name="Set location"/>
-
     </flow>
     <flow name="get:/patients/{id}/unauthorize:template-healthcare-fitness2crm-sync-process-api-config">
         <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/unauthorize" method="GET" doc:name="GET unauthorize call to Fitbit">
@@ -64,7 +87,7 @@ payload.location]]></dw:set-payload>
 
     </flow>
     <flow name="post:/patients/{id}/migrateFitnessData:template-healthcare-fitness2crm-sync-process-api-config">
-        <set-variable variableName="fromDate" value="ge#[message.inboundProperties.'http.query.params'.fromDate]" doc:name="Set fromDate"/>
+        <set-variable variableName="fromDate" value="ge#[message.inboundProperties.'http.query.params'.fromDate]" doc:name="Set fromDate variable"/>
         <async doc:name="Async">
             <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
         </async>
@@ -73,17 +96,19 @@ payload.location]]></dw:set-payload>
 %output application/json
 ---
 {
-	"message" : "Migration was successful and synchronization started"
+	"message" : "Migration and synchronization started successfully"
 }]]></dw:set-payload>
         </dw:transform-message>
 
     </flow>
     <flow name="get:/patients/{id}:template-healthcare-fitness2crm-sync-process-api-config">
+
         <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}" method="GET" doc:name="GET Patient authorization status">
             <http:request-builder>
                 <http:uri-param paramName="id" value="#[flowVars.id]"/>
             </http:request-builder>
         </http:request>
+
     </flow>
     <flow name="syncFitbitFitnessDataFlow" initialState="started">
         <poll doc:name="Poll ">
@@ -113,6 +138,7 @@ payload.patients]]></dw:set-payload>
         <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/Device" method="GET" doc:name="GET Devices from Fitbit">
             <http:request-builder>
                 <http:uri-param paramName="id" value="#[flowVars.id]"/>
+
             </http:request-builder>
         </http:request>
         <dw:transform-message doc:name="Get Devices from the response">
@@ -151,7 +177,7 @@ flowVars.device]]></dw:set-payload>
                         <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
 ---
-flowVars.device]]></dw:set-payload>
+flowVars.device ++ { "id" : flowVars.existingDeviceId }]]></dw:set-payload>
                     </dw:transform-message>
                     <http:request config-ref="HTTP_Conf_SFDC-system-api" path="/Device/{id}" method="PUT" doc:name="PUT Device into SFDC">
                         <http:request-builder>
