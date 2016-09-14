@@ -27,6 +27,7 @@ Fitness to CRM Sync Process API is part of the Healthcare Templates Solution. Th
 # Considerations <a name="considerations"/>
 
 To make this Anypoint Template run, there are certain preconditions that must be considered. **Failling to do so could lead to unexpected behavior of the template.**
+Use Anypoint Studio v6.1.0+ and Mule ESB 3.8.1+ to run this template.
 
 ### Running the application
 
@@ -59,6 +60,7 @@ You can find a detailed description on how to do so in this [Documentation Page]
 ### Running on Studio <a name="runonstudio"/>
 Once you have imported you Anypoint Template into Anypoint Studio you need to follow these steps to run it:
 
++ Generate keystore and set up the truststore (You can find a detailed description on how to do so in this [Documentation Page](https://docs.mulesoft.com/mule-user-guide/v/3.7/tls-configuration#generating-keystores-and-truststores))
 + Locate the properties file `mule.dev.properties`, in src/main/resources
 + Complete all the properties required as per the examples in the section [Properties to be configured](#propertiestobeconfigured)
 + Once that is done, right click on you Anypoint Template project folder 
