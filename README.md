@@ -40,27 +40,25 @@ See below.
 ## Running on premise <a name="runonopremise"/>
 In this section we detail the way you should run your Anypoint Template on your computer.
 
-
 ### Where to Download Mule Studio and Mule ESB
 First thing to know if you are a newcomer to Mule is where to get the tools.
 
-+ You can download Mule Studio from this [Location](http://www.mulesoft.com/platform/mule-studio)
++ You can download Anypoint Studio from this [Location](http://www.mulesoft.com/platform/studio)
 + You can download Mule ESB from this [Location](http://www.mulesoft.com/platform/soa/mule-esb-open-source-esb)
 
 ### Importing an Anypoint Template into Studio
-Mule Studio offers several ways to import a project into the workspace, for instance: 
+Anypoint Studio offers several ways to import a project into the workspace, for instance: 
 
 + Anypoint Studio generated Deployable Archive (.zip)
 + Anypoint Studio Project from External Location
 + Maven-based Mule Project from pom.xml
 + Mule ESB Configuration XML from External Location
 
-You can find a detailed description on how to do so in this [Documentation Page](http://www.mulesoft.org/documentation/display/current/Importing+and+Exporting+in+Studio).
+You can find a detailed description on how to do so in this [Documentation Page](https://docs.mulesoft.com/anypoint-studio/v/6/importing-and-exporting-in-studio).
 
 ### Running on Studio <a name="runonstudio"/>
 Once you have imported you Anypoint Template into Anypoint Studio you need to follow these steps to run it:
 
-+ Generate keystore and set up the truststore (You can find a detailed description on how to do so in this [Documentation Page](https://docs.mulesoft.com/mule-user-guide/v/3.7/tls-configuration#generating-keystores-and-truststores))
 + Locate the properties file `mule.dev.properties`, in src/main/resources
 + Complete all the properties required as per the examples in the section [Properties to be configured](#propertiestobeconfigured)
 + Once that is done, right click on you Anypoint Template project folder 
@@ -68,38 +66,38 @@ Once you have imported you Anypoint Template into Anypoint Studio you need to fo
 + Click on  `"Mule Application"`
 
 ### Running on Mule ESB stand alone <a name="runonmuleesbstandalone"/>
-Complete all properties in one of the property files, for example in [mule.prod.properties](../master/src/main/resources/mule.prod.properties) and run your app with the corresponding environment variable to use it. To follow the example, this will be `mule.env=prod`.
+Fill in all the properties in one of the property files, for example in [mule.prod.properties](../master/src/main/resources/mule.prod.properties) and run your app with the corresponding environment variable to use it. To follow the example, this will be `mule.env=prod`.
 
 ## Running on CloudHub <a name="runoncloudhub"/>
-While [creating your application on CloudHub](http://www.mulesoft.org/documentation/display/current/Hello+World+on+CloudHub) (Or you can do it later as a next step), you need to go to `"Manage Application"` > `"Properties"` to set all environment variables detailed in **Properties to be configured**.
+While [creating your application on CloudHub](https://docs.mulesoft.com/runtime-manager/hello-world-on-cloudhub) (Or you can do it later as a next step), you need to go to `"Manage Application"` > `"Properties"` to set all environment variables detailed in **Properties to be configured**.
 Follow other steps defined [here](#runonpremise) and once your app is all set and started, there is no need to do anything else.
 
 ### Deploying your Anypoint Template on CloudHub <a name="deployingyouranypointtemplateoncloudhub"/>
-Mule Studio provides you with really easy way to deploy your Template directly to CloudHub, for the specific steps to do so please check this [link](http://www.mulesoft.org/documentation/display/current/Deploying+Mule+Applications#DeployingMuleApplications-DeploytoCloudHub)
+Anypoint Studio provides you with really easy way to deploy your Template directly to CloudHub, for the specific steps to do so please check this [link](https://docs.mulesoft.com/mule-fundamentals/v/3.8/deploying-mule-applications#deploy-to-the-anypoint-platform)
 
 ## Properties to be configured (With examples) <a name="propertiestobeconfigured"/>
 In order to use this Mule Anypoint Template you need to configure properties (APIs, Credentials, API Autodiscovery, etc.) either in properties file or in CloudHub as Environment Variables. The Fitbit System API is using secured connection. Detail list with examples:
 ### Application properties
 + https.port `443`
-+ fitbit2fhir.system.api.port=`443`
-+ fitbit2fhir.system.api.host=`fitbit-system-api.host.cloudhub.io`
-+ fitbit2fhir.system.api.basePath=`/api`
++ fitbit2fhir.system.api.port `443`
++ fitbit2fhir.system.api.host `fitbit-system-api.host.cloudhub.io`
++ fitbit2fhir.system.api.basePath `/api`
 
-+ sfdc.system.api.port=`80`
-+ sfdc.system.api.host=`crm-system-api.host.cloudhub.io`
-+ sfdc.system.api.basePath=`/api`
++ sfdc.system.api.port `80`
++ sfdc.system.api.host `crm-system-api.host.cloudhub.io`
++ sfdc.system.api.basePath `/api`
 
-+ keystore.location=`external-keystore.jks`
-+ keystore.password=`mule1234`
-+ key.password=`mule1234`
-+ key.alias=`1`
++ keystore.location `external-keystore.jks`
++ keystore.password `mule1234`
++ key.password `mule1234`
++ key.alias `1`
 
-+ truststore.location=`external-truststore`
-+ truststore.password=`mule1234`
++ truststore.location `external-truststore`
++ truststore.password `mule1234`
 
-+ api.version=`api_version`
-+ api.name=`api_name`
-+ api.id=`api_id`
++ api.version `api_version`
++ api.name `api_name`
++ api.id `api_id`
 
-+ anypoint.platform.client_id=`anypoint_platform_client_id`
-+ anypoint.platform.client_secret=`anypoint_platform_client_secret`
++ anypoint.platform.client_id `anypoint_platform_client_id`
++ anypoint.platform.client_secret `anypoint_platform_client_secret`
