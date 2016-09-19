@@ -22,7 +22,7 @@ Please review the terms of the license before downloading and using this templat
 
 As a FitBit user I want a microservice to synchronize Device and Observation data between FitBit system and CRM (e.g. Salesforce Health Cloud).
 
-Fitness to CRM Sync Process API is part of the Healthcare Templates Solution. This template calls FitBit System API to authorize Patient on Fitbit system. After Patient is authorized, poller once a day retrieve required data from through the FitBit System API and migrate them to CRM system using the standardized FHIR structures [version 1.0.2 DSTU2](https://www.hl7.org/FHIR/DSTU2/index.html).
+Fitness to CRM Sync Process API is part of the Healthcare Templates Solution. This template calls FitBit System API to authorize Patient on Fitbit system. After Patient is authorized, historical data are migrated and poller once a day retrieve required data from FitBit through the FitBit System API and migrate them to CRM system using the standardized FHIR structures [version 1.0.2 DSTU2](https://www.hl7.org/FHIR/DSTU2/index.html).
 
 # Considerations <a name="considerations"/>
 
@@ -81,6 +81,13 @@ Anypoint Studio provides you with really easy way to deploy your Template direct
 In order to use this Mule Anypoint Template you need to configure properties (APIs, Credentials, API Autodiscovery, etc.) either in properties file or in CloudHub as Environment Variables. The Fitbit System API is using secured connection. Detail list with examples:
 ### Application properties
 + https.port `443`
+
++ migrate.historical.data.max.retries `10`
++ migrate.historical.data.millis.between.retries `10000`
++ migrate.historical.data.period `-3`
+
+	**Note**: period to the past (since current date) in months for the migration of the historical data eg. -3 means data for 3 months since today
+
 + fitbit2fhir.system.api.port `443`
 + fitbit2fhir.system.api.host `fitbit-system-api.host.cloudhub.io`
 + fitbit2fhir.system.api.basePath `/api`
