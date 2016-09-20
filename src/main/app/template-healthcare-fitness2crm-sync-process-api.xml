@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mule xmlns:api-platform-gw="http://www.mulesoft.org/schema/mule/api-platform-gw"
+<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:api-platform-gw="http://www.mulesoft.org/schema/mule/api-platform-gw"
 	xmlns:objectstore="http://www.mulesoft.org/schema/mule/objectstore" xmlns:schedulers="http://www.mulesoft.org/schema/mule/schedulers" xmlns:context="http://www.springframework.org/schema/context"
 	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
 	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/api-platform-gw http://www.mulesoft.org/schema/mule/api-platform-gw/current/mule-api-platform-gw.xsd
@@ -12,7 +12,8 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
 http://www.mulesoft.org/schema/mule/schedulers http://www.mulesoft.org/schema/mule/schedulers/current/mule-schedulers.xsd
-http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/mule/objectstore/current/mule-objectstore.xsd">
+http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/mule/objectstore/current/mule-objectstore.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
     
     <api-platform-gw:api id="${api.id}" apiName="${api.name}" version="${api.version}" flowRef="template-healthcare-fitness2crm-sync-process-api-main" doc:name="API Autodiscovery" create="true" ></api-platform-gw:api>
     
@@ -42,6 +43,10 @@ http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/m
     <http:request-config name="HTTP_Conf_SFDC-system-api" host="${sfdc.system.api.host}" port="${sfdc.system.api.port}" basePath="${sfdc.system.api.basePath}" doc:name="HTTP Request Configuration"  connectionIdleTimeout="300000" responseTimeout="-1">
         <http:raml-api-configuration location="healthcare-system-api/healthcare-system-api.raml"/>
     </http:request-config>
+    <objectstore:config name="LastSyncDate_ObjectStore__Connector" persistent="true" doc:name="ObjectStore: Connector" partition="LastSyncDateStore"/>
+    <spring:beans>
+        <spring:bean id="untilSuccessfulObjectStore" class="org.mule.util.store.SimpleMemoryObjectStore"/>
+    </spring:beans>
 
     <flow name="template-healthcare-fitness2crm-sync-process-api-main">
         <http:listener config-ref="template-healthcare-fitness2crm-sync-process-api-httpListenerConfig" path="/api/*" doc:name="HTTP"/>
@@ -64,6 +69,7 @@ location : payload.location]]></dw:set-payload>
 
     </flow>
     <flow name="get:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config">
+    	<flow-ref name="migrateAfterAuthorizationSubFlow" doc:name="migrateAfterAuthorizationSubFlow"/>
         <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
             <http:request-builder>
                 <http:uri-param paramName="id" value="#[flowVars.id]"/>
@@ -78,6 +84,37 @@ payload.location]]></dw:set-payload>
         <set-property propertyName="http.status" value="302" doc:name="Set HTTP status"/>
         <set-property propertyName="location" value="#[payload]" doc:name="Set location"/>
     </flow>
+    <sub-flow name="migrateAfterAuthorizationSubFlow">
+        <logger message="Migrate historical data after authorization" level="INFO" doc:name="Log migrate historical data after authorization"/>
+        <until-successful maxRetries="${migrate.historical.data.max.retries}" millisBetweenRetries="${migrate.historical.data.millis.between.retries}" doc:name="Until Successful" objectStore-ref="untilSuccessfulObjectStore">
+            <processor-chain doc:name="Processor Chain">
+                <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}" method="GET" doc:name="GET Patient authorization status">
+                    <http:request-builder>
+                        <http:uri-param paramName="id" value="#[flowVars.id]"/>
+                    </http:request-builder>
+                </http:request>
+                <dw:transform-message doc:name="Transform Message to Java object">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-payload>
+                </dw:transform-message>
+                <validation:is-true message="Patient not authorized yet" expression="#[payload.isAuthorized]" doc:name="Validate if patient is authorized"/>
+                <objectstore:contains config-ref="LastSyncDate_ObjectStore__Connector" key="#[flowVars.id]" doc:name="Contains lastSyncDate"/>
+                <choice doc:name="Contains lastSyncDate?">
+                    <when expression="payload == true">
+                        <objectstore:retrieve config-ref="LastSyncDate_ObjectStore__Connector" key="#[flowVars.id]" targetProperty="fromDate" doc:name="Set lastSyncDate to fromDate variable"/>
+                        <set-variable variableName="fromDate" value="#[flowVars.fromDate.replaceAll(&quot;eq&quot;,&quot;ge&quot;)]" doc:name="Modify fromDate to get data since that date"/>
+                    </when>
+                    <otherwise>
+                        <set-variable variableName="fromDate" value="ge#[server.dateTime.plusMonths(${historical.data.period}).format(&quot;yyyy-MM-dd&quot;)]" doc:name="Set default fromDate variable"/>
+                    </otherwise>
+                </choice>
+                <logger message="Migrate historical data since #[flowVars.fromDate]" level="INFO" doc:name="Log migrate historical data since lastSyncDate"/>
+                <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
+            </processor-chain>
+        </until-successful>
+    </sub-flow>
     <flow name="get:/patients/{id}/unauthorize:template-healthcare-fitness2crm-sync-process-api-config">
         <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/unauthorize" method="GET" doc:name="GET unauthorize call to Fitbit">
             <http:request-builder>
@@ -126,6 +163,7 @@ payload.patients]]></dw:set-payload>
             <set-variable variableName="fromDate" value="eq#[server.dateTime.format(&quot;yyyy-MM-dd&quot;)]" doc:name="Set fromDate variable"/>
             <set-variable variableName="id" value="#[payload]" doc:name="Set id variable"/>
             <logger message="ObservationDate: #[flowVars.fromDate] ** PatientID: #[flowVars.id]" level="INFO" doc:name="Log fromDate and id variables"/>
+            <objectstore:store config-ref="LastSyncDate_ObjectStore__Connector" key="#[flowVars.id]" value-ref="#[flowVars.fromDate]" overwrite="true" doc:name="Store LastSyncDate"/>
             <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
         </foreach>
         <logger message="Poll has finished!" level="INFO" doc:name="Log 'Poll has finished' message"/>
