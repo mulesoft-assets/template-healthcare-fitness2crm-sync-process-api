@@ -189,7 +189,7 @@ payload.entry.resource when (payload.total > 0) otherwise []]]></dw:set-payload>
             <set-variable variableName="device" value="#[payload]" doc:name="Set Device variable"/>
             <http:request config-ref="HTTP_Conf_SFDC-system-api" path="/Device" method="GET" doc:name="GET Device from SFDC">
                 <http:request-builder>
-                    <http:query-param paramName="identifier" value="#[flowVars.device.id]"/>
+                    <http:query-param paramName="identifier" value="#[flowVars.device.identifier[0].value]"/>
                 </http:request-builder>
             </http:request>
             <dw:transform-message doc:name="Get existing Device Id from JSON response">
