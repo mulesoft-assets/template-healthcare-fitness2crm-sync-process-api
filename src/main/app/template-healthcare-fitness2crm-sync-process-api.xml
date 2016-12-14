@@ -107,7 +107,7 @@ payload]]></dw:set-payload>
                         <set-variable variableName="fromDate" value="#[flowVars.fromDate.replaceAll(&quot;eq&quot;,&quot;ge&quot;)]" doc:name="Modify fromDate to get data since that date"/>
                     </when>
                     <otherwise>
-                        <set-variable variableName="fromDate" value="ge#[server.dateTime.plusMonths(${historical.data.period}).format(&quot;yyyy-MM-dd&quot;)]" doc:name="Set default fromDate variable"/>
+                        <set-variable variableName="fromDate" value="ge#[server.dateTime.plusMonths(${migrate.historical.data.period}).format(&quot;yyyy-MM-dd&quot;)]" doc:name="Set default fromDate variable"/>
                     </otherwise>
                 </choice>
                 <logger message="Migrate historical data since #[flowVars.fromDate]" level="INFO" doc:name="Log migrate historical data since lastSyncDate"/>
