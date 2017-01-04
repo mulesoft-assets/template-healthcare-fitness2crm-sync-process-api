@@ -196,7 +196,7 @@ payload.entry.resource when (payload.total > 0) otherwise []]]></dw:set-payload>
                 <dw:set-variable variableName="existingDeviceId"><![CDATA[%dw 1.0
 %output application/java
 ---
-payload.entry.resource[0].id when (payload.total > 0) otherwise null]]></dw:set-variable>
+payload.entry[0].resource.id when (payload.total > 0) otherwise null]]></dw:set-variable>
             </dw:transform-message>
             <choice doc:name="Does Device already exist?">
                 <when expression="#[flowVars.existingDeviceId == null]">
