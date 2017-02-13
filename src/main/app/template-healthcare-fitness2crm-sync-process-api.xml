@@ -27,8 +27,7 @@ http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mu
 	</http:listener-config>
     
     <apikit:config name="template-healthcare-fitness2crm-sync-process-api-config" raml="healthcare-fitness2crm-sync-process-api.raml" consoleEnabled="true" doc:name="Router" consolePath="console">
-        <apikit:flow-mapping resource="/patients/{id}/authorize" action="post" flow-ref="post:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config"/>
-        <apikit:flow-mapping resource="/patients/{id}/authorize" action="get" flow-ref="get:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config"/>
+        <apikit:flow-mapping resource="/patients/{id}/register" action="get" flow-ref="get:/patients/{id}/register:template-healthcare-fitness2crm-sync-process-api-config"/>
         <apikit:flow-mapping resource="/patients/{id}/unauthorize" action="get" flow-ref="get:/patients/{id}/unauthorize:template-healthcare-fitness2crm-sync-process-api-config"/>
         <apikit:flow-mapping resource="/patients/{id}/migrateFitnessData" action="post" flow-ref="post:/patients/{id}/migrateFitnessData:template-healthcare-fitness2crm-sync-process-api-config"/>
     </apikit:config>
@@ -53,36 +52,14 @@ http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mu
         <apikit:router config-ref="template-healthcare-fitness2crm-sync-process-api-config" doc:name="APIkit Router"/>
         <exception-strategy ref="template-healthcare-fitness2crm-sync-process-api-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy"/>
     </flow>
-
-    <flow name="post:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config">
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
+    <flow name="get:/patients/{id}/register:template-healthcare-fitness2crm-sync-process-api-config">
+        <flow-ref name="migrateAfterAuthorizationSubFlow" doc:name="migrateAfterAuthorizationSubFlow"/>
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/register" method="GET" doc:name="GET register call to Fitbit">
             <http:request-builder>
-                <http:uri-param paramName="id" value="#[flowVars.id]"/>
+                <http:query-param paramName="code" value="#[message.inboundProperties.'http.query.params'.code]"/>
+                <http:uri-param paramName="id" value="#[message.inboundProperties.'http.uri.params'.id]"/>
             </http:request-builder>
         </http:request>
-        <dw:transform-message doc:name="Get location from the response">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/json
----
-location : payload.location]]></dw:set-payload>
-        </dw:transform-message>
-
-    </flow>
-    <flow name="get:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config">
-    	<flow-ref name="migrateAfterAuthorizationSubFlow" doc:name="migrateAfterAuthorizationSubFlow"/>
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
-            <http:request-builder>
-                <http:uri-param paramName="id" value="#[flowVars.id]"/>
-            </http:request-builder>
-        </http:request>
-        <dw:transform-message doc:name="Get location from the response">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/java
----
-payload.location]]></dw:set-payload>
-        </dw:transform-message>
-        <set-property propertyName="http.status" value="302" doc:name="Set HTTP status"/>
-        <set-property propertyName="location" value="#[payload]" doc:name="Set location"/>
     </flow>
     <sub-flow name="migrateAfterAuthorizationSubFlow">
         <logger message="Migrate historical data after authorization" level="INFO" doc:name="Log migrate historical data after authorization"/>
