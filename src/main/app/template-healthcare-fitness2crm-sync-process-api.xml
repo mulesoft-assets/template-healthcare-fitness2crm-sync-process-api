@@ -81,14 +81,22 @@ payload]]></dw:set-payload>
                 <choice doc:name="Contains lastSyncDate?">
                     <when expression="payload == true">
                         <objectstore:retrieve config-ref="LastSyncDate_ObjectStore__Connector" key="#[flowVars.id]" targetProperty="fromDate" doc:name="Set lastSyncDate to fromDate variable"/>
-                        <set-variable variableName="fromDate" value="#[flowVars.fromDate.replaceAll(&quot;eq&quot;,&quot;ge&quot;)]" doc:name="Modify fromDate to get data since that date"/>
+                        <set-variable variableName="fromDate" value="ge#[flowVars.fromDate]" doc:name="Modify fromDate to get data after that date"/>
                     </when>
                     <otherwise>
                         <set-variable variableName="fromDate" value="ge#[server.dateTime.plusMonths(${migrate.historical.data.period}).format(&quot;yyyy-MM-dd&quot;)]" doc:name="Set default fromDate variable"/>
                     </otherwise>
                 </choice>
-                <logger message="Migrate historical data since #[flowVars.fromDate]" level="INFO" doc:name="Log migrate historical data since lastSyncDate"/>
-                <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
+                <choice doc:name="Choice">
+                    <when expression="!server.dateTime.format(&quot;yyyy-MM-dd&quot;).equals(flowVars.fromDate.replaceAll(&quot;ge&quot;, &quot;&quot;))">
+                        <logger message="Migrate historical data since #[flowVars.fromDate.replaceAll(&quot;ge&quot;, &quot;&quot;)]" level="INFO" doc:name="Log migrate historical data since lastSyncDate"/>
+                        <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
+                    </when>
+                    <otherwise>
+                        <logger message="Historical data are migrated" level="INFO" doc:name="Log historical data migrated"/>
+                    </otherwise>
+                </choice>
+
             </processor-chain>
         </until-successful>
     </sub-flow>
@@ -140,7 +148,7 @@ payload.patients]]></dw:set-payload>
             <set-variable variableName="fromDate" value="eq#[server.dateTime.format(&quot;yyyy-MM-dd&quot;)]" doc:name="Set fromDate variable"/>
             <set-variable variableName="id" value="#[payload]" doc:name="Set id variable"/>
             <logger message="ObservationDate: #[flowVars.fromDate] ** PatientID: #[flowVars.id]" level="INFO" doc:name="Log fromDate and id variables"/>
-            <objectstore:store config-ref="LastSyncDate_ObjectStore__Connector" key="#[flowVars.id]" value-ref="#[flowVars.fromDate]" overwrite="true" doc:name="Store LastSyncDate"/>
+
             <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
         </foreach>
         <logger message="Poll has finished!" level="INFO" doc:name="Log 'Poll has finished' message"/>
@@ -218,6 +226,7 @@ payload.entry.resource when (payload.total > 0) otherwise []]]></dw:set-payload>
         </dw:transform-message>
         <foreach collection="payload" doc:name="For Each Observation">
             <logger message="POSTing Observation: #[payload]" level="INFO" doc:name="Log POST operation"/>
+            <set-variable variableName="fromDate" value="#[payload.effectiveDateTime]" doc:name="Set fromDate variable"/>
             <dw:transform-message doc:name="Prepare Observation in FHIR JSON structure">
                 <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
@@ -225,6 +234,7 @@ payload.entry.resource when (payload.total > 0) otherwise []]]></dw:set-payload>
 payload]]></dw:set-payload>
             </dw:transform-message>
             <http:request config-ref="HTTP_Conf_SFDC-system-api" path="/Observation" method="POST" doc:name="POST Observation to SFDC"/>
+            <objectstore:store config-ref="LastSyncDate_ObjectStore__Connector" key="#[flowVars.id]" value-ref="#[flowVars.fromDate]" overwrite="true" doc:name="Store LastSyncDate"/>
         </foreach>
     </sub-flow>
 
