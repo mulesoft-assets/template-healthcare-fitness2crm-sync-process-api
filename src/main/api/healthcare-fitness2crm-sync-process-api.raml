@@ -17,17 +17,20 @@ mediaType: application/json
         body:
           application/json:
             example: !include getPatientById-response.json
-  /authorize:
-    displayName: Authorize Fitbit user
+  /register:
+    displayName: Register Fitbit account
     get:
-      responses:
-        302:
-    post:
-      responses:
-        200:
-          body:
-            application/json: 
-             example: !include postPatientAuthorize-response.json
+      description: Register patient's Fitbit account
+      queryParameters:
+        code:
+          description: Authorization code from Fitbit
+          type: string
+          example: fs4ag1f35g43543b13f1v3a54gn4fsfs545s3143g
+      responses: 
+        200:  
+          body: 
+            application/json:
+              example: !include getPatientRegister-response.json
   /unauthorize:
     displayName: Unauthorize Fitbit user
     get:

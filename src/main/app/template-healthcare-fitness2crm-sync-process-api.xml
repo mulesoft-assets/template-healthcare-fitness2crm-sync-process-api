@@ -27,8 +27,7 @@ http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mu
 	</http:listener-config>
     
     <apikit:config name="template-healthcare-fitness2crm-sync-process-api-config" raml="healthcare-fitness2crm-sync-process-api.raml" consoleEnabled="true" doc:name="Router" consolePath="console">
-        <apikit:flow-mapping resource="/patients/{id}/authorize" action="post" flow-ref="post:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config"/>
-        <apikit:flow-mapping resource="/patients/{id}/authorize" action="get" flow-ref="get:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config"/>
+        <apikit:flow-mapping resource="/patients/{id}/register" action="get" flow-ref="get:/patients/{id}/register:template-healthcare-fitness2crm-sync-process-api-config"/>
         <apikit:flow-mapping resource="/patients/{id}/unauthorize" action="get" flow-ref="get:/patients/{id}/unauthorize:template-healthcare-fitness2crm-sync-process-api-config"/>
         <apikit:flow-mapping resource="/patients/{id}/migrateFitnessData" action="post" flow-ref="post:/patients/{id}/migrateFitnessData:template-healthcare-fitness2crm-sync-process-api-config"/>
     </apikit:config>
@@ -53,36 +52,14 @@ http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mu
         <apikit:router config-ref="template-healthcare-fitness2crm-sync-process-api-config" doc:name="APIkit Router"/>
         <exception-strategy ref="template-healthcare-fitness2crm-sync-process-api-apiKitGlobalExceptionMapping" doc:name="Reference Exception Strategy"/>
     </flow>
-
-    <flow name="post:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config">
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
+    <flow name="get:/patients/{id}/register:template-healthcare-fitness2crm-sync-process-api-config">
+        <flow-ref name="migrateAfterAuthorizationSubFlow" doc:name="migrateAfterAuthorizationSubFlow"/>
+        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/register" method="GET" doc:name="GET register call to Fitbit">
             <http:request-builder>
-                <http:uri-param paramName="id" value="#[flowVars.id]"/>
+                <http:query-param paramName="code" value="#[message.inboundProperties.'http.query.params'.code]"/>
+                <http:uri-param paramName="id" value="#[message.inboundProperties.'http.uri.params'.id]"/>
             </http:request-builder>
         </http:request>
-        <dw:transform-message doc:name="Get location from the response">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/json
----
-location : payload.location]]></dw:set-payload>
-        </dw:transform-message>
-
-    </flow>
-    <flow name="get:/patients/{id}/authorize:template-healthcare-fitness2crm-sync-process-api-config">
-    	<flow-ref name="migrateAfterAuthorizationSubFlow" doc:name="migrateAfterAuthorizationSubFlow"/>
-        <http:request config-ref="HTTP_Conf_fitbit2fhir-system-api" path="/Patient/{id}/authorize" method="GET" doc:name="GET authorize call to Fitbit">
-            <http:request-builder>
-                <http:uri-param paramName="id" value="#[flowVars.id]"/>
-            </http:request-builder>
-        </http:request>
-        <dw:transform-message doc:name="Get location from the response">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/java
----
-payload.location]]></dw:set-payload>
-        </dw:transform-message>
-        <set-property propertyName="http.status" value="302" doc:name="Set HTTP status"/>
-        <set-property propertyName="location" value="#[payload]" doc:name="Set location"/>
     </flow>
     <sub-flow name="migrateAfterAuthorizationSubFlow">
         <logger message="Migrate historical data after authorization" level="INFO" doc:name="Log migrate historical data after authorization"/>
@@ -104,14 +81,22 @@ payload]]></dw:set-payload>
                 <choice doc:name="Contains lastSyncDate?">
                     <when expression="payload == true">
                         <objectstore:retrieve config-ref="LastSyncDate_ObjectStore__Connector" key="#[flowVars.id]" targetProperty="fromDate" doc:name="Set lastSyncDate to fromDate variable"/>
-                        <set-variable variableName="fromDate" value="#[flowVars.fromDate.replaceAll(&quot;eq&quot;,&quot;ge&quot;)]" doc:name="Modify fromDate to get data since that date"/>
+                        <set-variable variableName="fromDate" value="ge#[flowVars.fromDate]" doc:name="Modify fromDate to get data after that date"/>
                     </when>
                     <otherwise>
                         <set-variable variableName="fromDate" value="ge#[server.dateTime.plusMonths(${migrate.historical.data.period}).format(&quot;yyyy-MM-dd&quot;)]" doc:name="Set default fromDate variable"/>
                     </otherwise>
                 </choice>
-                <logger message="Migrate historical data since #[flowVars.fromDate]" level="INFO" doc:name="Log migrate historical data since lastSyncDate"/>
-                <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
+                <choice doc:name="Choice">
+                    <when expression="!server.dateTime.format(&quot;yyyy-MM-dd&quot;).equals(flowVars.fromDate.replaceAll(&quot;ge&quot;, &quot;&quot;))">
+                        <logger message="Migrate historical data since #[flowVars.fromDate.replaceAll(&quot;ge&quot;, &quot;&quot;)]" level="INFO" doc:name="Log migrate historical data since lastSyncDate"/>
+                        <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
+                    </when>
+                    <otherwise>
+                        <logger message="Historical data are migrated" level="INFO" doc:name="Log historical data migrated"/>
+                    </otherwise>
+                </choice>
+
             </processor-chain>
         </until-successful>
     </sub-flow>
@@ -163,7 +148,7 @@ payload.patients]]></dw:set-payload>
             <set-variable variableName="fromDate" value="eq#[server.dateTime.format(&quot;yyyy-MM-dd&quot;)]" doc:name="Set fromDate variable"/>
             <set-variable variableName="id" value="#[payload]" doc:name="Set id variable"/>
             <logger message="ObservationDate: #[flowVars.fromDate] ** PatientID: #[flowVars.id]" level="INFO" doc:name="Log fromDate and id variables"/>
-            <objectstore:store config-ref="LastSyncDate_ObjectStore__Connector" key="#[flowVars.id]" value-ref="#[flowVars.fromDate]" overwrite="true" doc:name="Store LastSyncDate"/>
+
             <flow-ref name="migrateFitbitFitnessDataSubFlow" doc:name="migrateFitbitFitnessDataSubFlow"/>
         </foreach>
         <logger message="Poll has finished!" level="INFO" doc:name="Log 'Poll has finished' message"/>
@@ -241,6 +226,7 @@ payload.entry.resource when (payload.total > 0) otherwise []]]></dw:set-payload>
         </dw:transform-message>
         <foreach collection="payload" doc:name="For Each Observation">
             <logger message="POSTing Observation: #[payload]" level="INFO" doc:name="Log POST operation"/>
+            <set-variable variableName="fromDate" value="#[payload.effectiveDateTime]" doc:name="Set fromDate variable"/>
             <dw:transform-message doc:name="Prepare Observation in FHIR JSON structure">
                 <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
@@ -248,6 +234,7 @@ payload.entry.resource when (payload.total > 0) otherwise []]]></dw:set-payload>
 payload]]></dw:set-payload>
             </dw:transform-message>
             <http:request config-ref="HTTP_Conf_SFDC-system-api" path="/Observation" method="POST" doc:name="POST Observation to SFDC"/>
+            <objectstore:store config-ref="LastSyncDate_ObjectStore__Connector" key="#[flowVars.id]" value-ref="#[flowVars.fromDate]" overwrite="true" doc:name="Store LastSyncDate"/>
         </foreach>
     </sub-flow>
 

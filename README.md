@@ -22,17 +22,24 @@ Please review the terms of the license before downloading and using this templat
 
 As a FitBit user I want a microservice to synchronize Device and Observation data between FitBit system and CRM (e.g. Salesforce Health Cloud).
 
-Fitness to CRM Sync Process API is part of the Healthcare Templates Solution. This template calls FitBit System API to authorize Patient on Fitbit system. After Patient is authorized, historical data are migrated and poller once a day retrieve required data from FitBit through the FitBit System API and migrate them to CRM system using the standardized FHIR structures [version 1.0.2 DSTU2](https://www.hl7.org/FHIR/DSTU2/index.html).
+Fitness to CRM Sync Process API is part of the Healthcare Templates Solution. This template calls FitBit System API to register Patient on Fitbit system. After Patient is registered, historical data are migrated and poller once a day retrieve required data from FitBit through the FitBit System API and migrate them to CRM system using the standardized FHIR structures [version 1.0.2 DSTU2](https://www.hl7.org/FHIR/DSTU2/index.html).
 
 # Considerations <a name="considerations"/>
 
 To make this Anypoint Template run, there are certain preconditions that must be considered. **Failling to do so could lead to unexpected behavior of the template.**
 Use Anypoint Studio v6.1.0+ and Mule ESB 3.8.1+ to run this template.
 
+### Register your Fitbit Application
+
+Firstly you need to ensure the developer app is created at http://dev.fitbit.com/ as  the OAuth 2.0 Application Type “Server”. Note that you will need to define the Callback URL too. 
+
 ### Running the application
 
-Fitbit’s authorization has to be initiated from a web-browser.
-http://<your-app-domain>.cloudhub.io/patients/{id}/authorize would get you to the login landing page where you will fill in your **email** and **password**.
+Fitbit’s OAuth login has to be initiated from a web-browser.
+**https://www.fitbit.com/oauth2/authorize?response_type=code&client_id=<your-client-id>&redirect_uri=<your-redirect-uri>&scope=activity%20profile%20settings%20sleep%20weight&prompt=login** would get you to the login landing page where you will fill in your email and password. After the successful login you will be redirected to the URL specified in the app at http://dev.fitbit.com/. You can notice the access code in the URL.
+
+To register patient to this fitbit account you need to do create the request **GET https://<your-app-domain>.cloudhub.io/patients/{id}/register?code=<your-access-code>** where {id} represents Patient ID, who wants to authorize to Fitbit account and access code is the one obtained after login with Fitbit credentials.
+
 
 # Run it! <a name="runit"/>
 Simple steps to get Healthcare Fitness to CRM Sync Process API running.
@@ -96,13 +103,13 @@ In order to use this Mule Anypoint Template you need to configure properties (AP
 + sfdc.system.api.host `crm-system-api.host.cloudhub.io`
 + sfdc.system.api.basePath `/api`
 
-+ keystore.location `external-keystore.jks`
-+ keystore.password `mule1234`
-+ key.password `mule1234`
++ keystore.location `keystore.jks`
++ keystore.password `password123`
++ key.password `password123`
 + key.alias `1`
 
-+ truststore.location `external-truststore`
-+ truststore.password `mule1234`
++ truststore.location `truststore`
++ truststore.password `pass123`
 
 + api.version `api_version`
 + api.name `api_name`
