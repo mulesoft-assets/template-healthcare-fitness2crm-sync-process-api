@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="getPatientsByIdSub_Flow" doc:id="19b565d0-2634-4087-bead-4cf865690a25" >
+		<logger level="INFO" doc:name="Logger" doc:id="08a280f0-63aa-4d73-a2fc-b59cc8a79fe7" message="getPatientsByIdSub_Flow"/>
+	</sub-flow>
+	<sub-flow name="registerPatientByIdSub_Flow" doc:id="78e9bc61-27bb-498e-8fce-46dee33ef154" >
+		<logger level="INFO" doc:name="Logger" doc:id="ec2dc381-4eb8-42f4-973b-14a40f4873c5" message="registerPatientByIdSub_Flow"/>
+	</sub-flow>
+	<sub-flow name="unauthorizePatientByIdSub_Flow" doc:id="7a49cc1e-0090-4ae0-ab16-fffc0c8d318b" >
+		<logger level="INFO" doc:name="Logger" doc:id="15c1c247-2a59-463f-b320-2f8b3da10bdb" message="unauthorizePatientByIdSub_Flow"/>
+	</sub-flow>
+	<sub-flow name="migrateFitnessDataSub_Flow" doc:id="eac7a943-ad36-4b6a-9f02-842c878151d2" >
+		<logger level="INFO" doc:name="Restconnect to Fitbit sys API" doc:id="7779a17c-bcb8-4f05-814d-78f5d3bea270" message="Restconnect to Fitbit sys API"/>
+		<ee:transform doc:name="Get Devices from the response" doc:id="b21b39bb-9b6d-43ea-8d1d-11316630338a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+if (payload.total > 0) payload.entry.resource else []]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each Device" doc:id="fa76a692-c5ff-4b85-9c0c-2b0e76a317bb" >
+			<set-variable value="#[payload]" doc:name="Set Device variable" doc:id="97f9d818-8ed4-4c60-b844-7e3944c49993" variableName="device"/>
+		</foreach>
+	</sub-flow>
+</mule>
