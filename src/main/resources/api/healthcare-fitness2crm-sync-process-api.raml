@@ -39,17 +39,3 @@ mediaType: application/json
           body:
             application/json:
               example: !include getPatientUnauthorize-response.json 
-  /migrateFitnessData:
-    displayName: Update Fitbit devices data together with activity and sleep observations for given patient
-    post:
-      description: Update Fitbit devices data together with activity and sleep observations for given patient
-      queryParameters:
-        fromDate:
-          type: string
-          example: 2016-07-18
-          required: true
-      responses:
-        200:
-          body:
-            application/json:
-              example: !include migrateFitnessData-response.json

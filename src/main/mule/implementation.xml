@@ -1,22 +1,224 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+    xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+    xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
-	<sub-flow name="getPatientsByIdSub_Flow" doc:id="19b565d0-2634-4087-bead-4cf865690a25" >
-		<logger level="INFO" doc:name="Logger" doc:id="08a280f0-63aa-4d73-a2fc-b59cc8a79fe7" message="getPatientsByIdSub_Flow"/>
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+
+    <sub-flow name="registerPatientByIdSubFlow" doc:id="78e9bc61-27bb-498e-8fce-46dee33ef154">
+		<flow-ref doc:name="migrateAfterAuthorization" doc:id="f9ae26df-bf08-4b18-bbd9-d62457f198d4" name="migrateAfterAuthorizationSubFlow" />
+		<logger level="INFO" doc:name="!!! PUT REST CONNECT HERE !!!" doc:id="08a280f0-63aa-4d73-a2fc-b59cc8a79fe7" />
 	</sub-flow>
-	<sub-flow name="registerPatientByIdSub_Flow" doc:id="78e9bc61-27bb-498e-8fce-46dee33ef154" >
-		<logger level="INFO" doc:name="Logger" doc:id="ec2dc381-4eb8-42f4-973b-14a40f4873c5" message="registerPatientByIdSub_Flow"/>
+	<sub-flow name="migrateAfterAuthorizationSubFlow" doc:id="abcb4a7e-076a-4f7b-a667-4e3533be2ea4" >
+		<logger level="INFO" doc:name="Log migrate historical data after authorization" doc:id="0f0e60d4-19ca-4606-9148-6caad4185c28" message="Migrate historical data after authorization"/>
+		<ee:transform doc:name="!!! PUT REST CONNECT HERE !!!" doc:id="fc3ae186-3ff6-4c30-8cec-0bd9cb0fc392">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "isAuthorized": true
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+					<ee:transform doc:name="Transform Message to Java object" doc:id="95baa6db-52cc-4649-99ad-229584f83974">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+					<validation:is-true doc:name="Validate if patient is authorized" doc:id="ef21d60a-8917-4c6e-a199-c16ee37a7c1d" config-ref="Validation_Config" expression="#[payload.isAuthorized]" message="Patient not authorized yet" />
+					<os:contains doc:name="Contains lastSyncDate" doc:id="661da9df-2397-4a66-85a2-1c4360b61fc7" key="#[vars.id]" objectStore="LastSyncDate_Config" />
+					<choice doc:name="Contains lastSyncDate?" doc:id="d75452ac-d087-4db4-bc0d-524b122ae7df">
+				<when expression="#[payload]">
+					<os:retrieve doc:name="Set lastSyncDate to fromDate variable" doc:id="a38f4e35-4a0d-4141-a052-11cb53192ec1" key="#[vars.id]" objectStore="LastSyncDate_Config" target="fromDate" />
+					<set-variable value='#["ge" ++ vars.fromDate]' doc:name="Modify fromDate to get data after that date" doc:id="3ec0c433-bdc0-4bec-a930-5c591edd5ebc" variableName="fromDate" />
+				</when>
+						<otherwise>
+					<set-variable value='#["ge" ++ (now() as String {format: "yyyy-MM-dd"})]' doc:name="Set default fromDate variable" doc:id="33c675f3-670e-4b73-b7f0-af764b2d1b9f" variableName="fromDate" />
+				</otherwise>
+			</choice>
+            <choice doc:name="Choice" doc:id="30ec2724-56a4-4b14-9c00-cb8a33056180" >
+						<when expression='#[(now() as String {format: "yyyy-MM-dd"}) != (vars.fromDate replace "ge" with "")]' >
+							<logger level="INFO" doc:name="Log migrate historical data since lastSyncDate" doc:id="0ddf4d16-91a4-4485-82bb-c566a1545e2d" message='Migrate historical data since #[vars.fromDate replace "ge" with ""]'/>
+							<flow-ref doc:name="migrateFitbitFitnessData" doc:id="7be17836-68f1-44c9-9c05-7ec08b5e16eb" name="migrateFitbitFitnessDataSubFlow"/>
+						</when>
+						<otherwise >
+							<logger level="INFO" doc:name="Log historical data migrated" doc:id="3e56f440-3f66-4de4-b612-18cf0e055aa5" message="Historical data are migrated"/>
+						</otherwise>
+					</choice>
 	</sub-flow>
-	<sub-flow name="unauthorizePatientByIdSub_Flow" doc:id="7a49cc1e-0090-4ae0-ab16-fffc0c8d318b" >
-		<logger level="INFO" doc:name="Logger" doc:id="15c1c247-2a59-463f-b320-2f8b3da10bdb" message="unauthorizePatientByIdSub_Flow"/>
+	<sub-flow name="migrateFitbitFitnessDataSubFlow" doc:id="eac7a943-ad36-4b6a-9f02-842c878151d2">
+		<flow-ref doc:name="migrateDevices" doc:id="b8acbd80-ee26-45e0-8bd2-eea552af9af8" name="migrateDevicesSubFlow"/>
+		<flow-ref doc:name="migrateObservations" doc:id="72d021a7-37e7-485b-8e0c-ae7b637c31bc" name="migrateObservationsSubFlow"/>
 	</sub-flow>
-	<sub-flow name="migrateFitnessDataSub_Flow" doc:id="eac7a943-ad36-4b6a-9f02-842c878151d2" >
-		<logger level="INFO" doc:name="Restconnect to Fitbit sys API" doc:id="7779a17c-bcb8-4f05-814d-78f5d3bea270" message="Restconnect to Fitbit sys API"/>
-		<ee:transform doc:name="Get Devices from the response" doc:id="b21b39bb-9b6d-43ea-8d1d-11316630338a" >
+	<sub-flow name="migrateDevicesSubFlow" doc:id="0aabb028-48f3-4dae-a557-3ffda17bfb47" >
+		<ee:transform doc:name="!!! GET Devices from Fitbit !!!" doc:id="91102199-43db-41b7-83e4-6e78bc0710cb" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "resourceType": "Bundle",
+    "type": "searchset",
+    "link": [
+        {
+            "relation": "self",
+            "url": "http://localhost:8081/api/Patient/123456/Device"
+        }
+    ],
+    "meta": {
+        "lastUpdated": "2018-08-01T13:34:19.82+03:00"
+    },
+    "total": 0,
+    "entry": []
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Get Devices from the response" doc:id="b21b39bb-9b6d-43ea-8d1d-11316630338a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+if (payload.total > 0) payload.entry.resource else []]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each Device" doc:id="fa76a692-c5ff-4b85-9c0c-2b0e76a317bb" collection="payload">
+			<set-variable value="#[payload]" doc:name="Set Device variable" doc:id="97f9d818-8ed4-4c60-b844-7e3944c49993" variableName="device" />
+			<ee:transform doc:name="!!! GET Device from SFDC !!!" doc:id="97e6fced-77e9-46de-9574-1667e6af136d" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<ee:transform doc:name="Get existing Device Id from JSON response" doc:id="345f2a05-0219-4160-9b21-2acea0666824" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="existingDeviceId" ><![CDATA[%dw 2.0
+output application/java
+---
+if (payload.total > 0) payload.entry[0].resource.id else null]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<choice doc:name="Does Device already exist?" doc:id="e5c56088-144d-4606-898e-b7dc745bb371" >
+				<when expression="#[vars.existingDeviceId == null]" >
+					<logger level="INFO" doc:name="Log POST operation" doc:id="723f1cf1-3529-444d-bf3a-c3cf92530976" message="POSTing Device : #[vars.device]"/>
+					<ee:transform doc:name="Prepare Device for POST in FHIR JSON structure" doc:id="42973b91-7d0a-482b-914a-2e2578226e17" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.device]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="!!! POST Device into SFDC !!!" doc:id="9bcc5358-9770-4194-b8da-75f4d2075ed4" />
+				</when>
+				<otherwise >
+					<logger level="INFO" doc:name="Log PUT operation" doc:id="b2ab98d5-153a-4dc3-9141-4125858b42a1" message="PUTing Device: #[vars.device]"/>
+					<ee:transform doc:name="Prepare Device for PUT in FHIR JSON structure" doc:id="ece3ee9b-feb5-4da0-a5ba-6c7e7b01593d" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.device ++ { "id" : vars.existingDeviceId }]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="!!! PUT Device into SFDC !!!" doc:id="caaa2fe4-c09a-450a-baa4-9184d7d858d4" />
+				</otherwise>
+			</choice>
+		</foreach>
+	</sub-flow>
+	<sub-flow name="migrateObservationsSubFlow" doc:id="d969aec4-60ff-417b-93a5-fee04969917e" >
+		<ee:transform doc:name="!!! PUT REST CONNECT HERE !!!" doc:id="7b452339-7ba7-4ab6-9f2c-3c074acf1c90" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "resourceType": "Bundle",
+    "type": "searchset",
+    "link": [
+        {
+            "relation": "self",
+            "url": "http://localhost:8081/api/Patient/123456/Observation"
+        }
+    ],
+    "meta": {
+        "lastUpdated": "2018-08-01T13:34:36.49+03:00"
+    },
+    "total": 2,
+    "entry": [
+        {
+            "fullUrl": "http://localhost:8081/api/Observation/noId",
+            "resource": {
+                "resourceType": "Observation",
+                "subject": {
+                    "reference": "Patient/123456"
+                },
+                "text": {
+                    "status": "empty",
+                    "div": ""
+                },
+                "effectiveDateTime": "2018-07-18",
+                "status": "final",
+                "code": {
+                    "coding": [
+                        {
+                            "system": "https://rtmms.nist.gov",
+                            "code": "0000000",
+                            "display": "MDC_HF_DISTANCE"
+                        }
+                    ]
+                },
+                "valueQuantity": {
+                    "value": "0",
+                    "unit": "MDC_DIM_STEP"
+                }
+            }
+        },
+        {
+            "fullUrl": "http://localhost:8081/api/Observation/noId",
+            "resource": {
+                "resourceType": "Observation",
+                "subject": {
+                    "reference": "Patient/123456"
+                },
+                "text": {
+                    "status": "empty",
+                    "div": ""
+                },
+                "effectiveDateTime": "2018-07-18",
+                "status": "final",
+                "code": {
+                    "coding": [
+                        {
+                            "system": "https://rtmms.nist.gov",
+                            "code": "0000000",
+                            "display": "MDC_HF_ACT_SLEEP"
+                        }
+                    ]
+                },
+                "valueQuantity": {
+                    "value": "0",
+                    "unit": "MDC_DIM_MIN"
+                }
+            }
+        }
+    ]
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Get Observations from the response" doc:id="d49134c2-e7ef-47fd-95b4-b639d54dc5ae" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
 output application/java
@@ -24,8 +226,81 @@ output application/java
 if (payload.total > 0) payload.entry.resource else []]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<foreach doc:name="For Each Device" doc:id="fa76a692-c5ff-4b85-9c0c-2b0e76a317bb" >
-			<set-variable value="#[payload]" doc:name="Set Device variable" doc:id="97f9d818-8ed4-4c60-b844-7e3944c49993" variableName="device"/>
+		<foreach doc:name="For Each Device" doc:id="a8299a07-1a7c-44e2-9954-ef1ac9fb2116" collection="payload">
+			<logger level="INFO" doc:name="Log POST operation" doc:id="4889d4b8-311e-4e96-8895-feeb12f02fb1" message="POSTing Observation: #[payload]"/>
+			<set-variable value="#[payload.effectiveDateTime]" doc:name="Set fromDate variable" doc:id="f6493268-1bc4-4973-8185-0356b2b2467b" variableName="fromDate"/>
+			<ee:transform doc:name="Prepare Observation in FHIR JSON structure" doc:id="f66b8df3-8718-44cf-b678-2f598e8a954b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			<logger level="INFO" doc:name="!!! POST Observation to SFDC !!!" doc:id="707462d7-8657-47b4-a389-fb1d24218d19" />
+			<os:store doc:name="Store LastSyncDate" doc:id="7bdd7094-559b-4d3f-96c1-edb721f40bb7" key="#[vars.id]" objectStore="LastSyncDate_Config">
+				<os:value ><![CDATA[#[vars.fromDate]]]></os:value>
+			</os:store>
 		</foreach>
 	</sub-flow>
+	<sub-flow name="getPatientsByIdSubFlow" doc:id="19b565d0-2634-4087-bead-4cf865690a25">
+		<ee:transform doc:name="!!! GET Patient authorization status !!!" doc:id="b0d25d6d-d623-4ace-bb7e-78c1d12110a7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "isAuthorized": true
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="unauthorizePatientByIdSubFlow" doc:id="7a49cc1e-0090-4ae0-ab16-fffc0c8d318b">
+		<logger level="INFO" doc:name="!!! GET unauthorize call to Fitbit !!!" doc:id="15c1c247-2a59-463f-b320-2f8b3da10bdb" message="unauthorizePatientByIdSub_Flow" />
+	</sub-flow>
+	<flow name="syncFitbitFitnessDataSubFlow" doc:id="6dea9337-2c93-4c86-945d-f04503162d17" >
+		<scheduler doc:name="Scheduler" doc:id="697c850d-3717-47e4-8571-a273273d3d17" >
+			<scheduling-strategy >
+				<cron expression="0 10 0 * * ?" />
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Log poll for changes from Fitbit" doc:id="9303ab55-cb61-4aa2-986c-8afd8ea2bd61" message='Polling changes from Fitbit .... date : #[now() as String {format: "yyyy-MM-dd"}]'/>
+		<ee:transform doc:name="!!! GET authorized Patients from Fitbit !!!" doc:id="4a2bde5a-148d-45d5-9070-6bf1f9bcaf78" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"patients" : ["123456"]
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Get Patients from the response" doc:id="22629344-8e09-4672-8f95-fd78d6533094" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload.patients]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each Patient" doc:id="e58dd35e-098a-4a4a-a128-7cb047a86984" collection="payload">
+			<ee:transform doc:name="Set variables" doc:id="1de26e0a-3645-409f-9a5d-4861502c22a3" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="fromDate" ><![CDATA[%dw 2.0
+output application/java
+---
+"eq" ++ (now() as String {format: "yyyy-MM-dd"})]]></ee:set-variable>
+					<ee:set-variable variableName="id" ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<logger level="INFO" doc:name="Log fromDate and id variables" doc:id="6884d3a9-c283-4e27-8ab3-631c216e6e52" message="ObservationDate: #[vars.fromDate] ** PatientID: #[vars.id]"/>
+			<flow-ref doc:name="migrateFitbitFitnessData" doc:id="3190078c-80ff-41b3-9f2a-2bf1fecc90e8" name="migrateFitbitFitnessDataSubFlow"/>
+		</foreach>
+		<logger level="INFO" doc:name="Log 'Poll has finished' message" doc:id="305c5614-3883-4f8d-80e4-c84ec9a51817" message="Poll has finished!"/>
+	</flow>
 </mule>

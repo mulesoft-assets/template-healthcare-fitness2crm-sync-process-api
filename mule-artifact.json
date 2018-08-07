@@ -17,8 +17,7 @@
         "api\\getPatientById-response.json",
         "api\\getPatientRegister-response.json",
         "api\\getPatientUnauthorize-response.json",
-        "api\\healthcare-fitness2crm-sync-process-api.raml",
-        "api\\migrateFitnessData-response.json"
+        "api\\healthcare-fitness2crm-sync-process-api.raml"
       ]
     }
   },
