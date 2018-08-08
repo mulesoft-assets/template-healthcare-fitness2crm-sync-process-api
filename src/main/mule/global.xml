@@ -1,5 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd"></mule>
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+    xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+    xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd 
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+    <configuration-properties doc:name="Configuration properties" doc:id="91b9a5c6-8ffe-466f-bb78-dd1d7de151d9"
+        file="mule-artifact.properties" />
+    <configuration-properties doc:name="Configuration properties" doc:id="b23a56fd-6baa-4203-8cee-c218cff0b23d"
+        file="common.properties" />
+    <configuration-properties doc:name="Configuration properties" doc:id="91b9a5c6-8ffe-466f-bb78-dd1d7de151d9"
+        file="mule.${mule.env}.properties" />
+
+    <http:listener-config name="healthcare-fitness2crm-sync-process-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="${https.port}" protocol="HTTPS" tlsContext="TLS_Context" />
+    </http:listener-config>
+
+    <tls:context name="TLS_Context" doc:name="TLS Context" doc:id="7bf21f3a-d8e6-46e0-bb12-0dc260d38a08">
+        <tls:key-store type="jks" path="${keystore.location}" alias="${key.alias}" keyPassword="${key.password}" password="${keystore.password}" />
+    </tls:context>
+
+    <apikit:config name="healthcare-fitness2crm-sync-process-api-config" raml="healthcare-fitness2crm-sync-process-api.raml"
+        outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+
+    <validation:config name="Validation_Config" doc:name="Validation Config" doc:id="a6b17b86-e1a6-41e3-828b-d1c40b321107" />
+
+    <os:config name="LastSyncDate_Config_Connector" doc:name="ObjectStore Config" doc:id="29195adb-9958-4680-82a0-c3301fc40a99" />
+    <os:object-store name="LastSyncDate_Config" doc:name="Object store" doc:id="f7c3a910-2450-44bf-b157-ccf5df22f51a"
+        config-ref="LastSyncDate_Config_Connector" />
+</mule>
