@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
-    xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
-    xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+    xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
@@ -10,21 +10,43 @@ http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mu
 http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
 
     <sub-flow name="registerPatientByIdSubFlow" doc:id="78e9bc61-27bb-498e-8fce-46dee33ef154">
+        <ee:transform doc:name="Set variables" doc:id="a321fe6d-3ec3-4dd3-b2cf-dd65b59114b6">
+			<ee:message >
+			</ee:message>
+            <ee:variables>
+				<ee:set-variable variableName="code" ><![CDATA[%dw 2.0
+output application/java
+---
+attributes.queryParams.code]]></ee:set-variable>
+                <ee:set-variable variableName="id"><![CDATA[%dw 2.0
+output application/java
+---
+attributes.uriParams.id]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<http:request method="GET" doc:name="GET register call to Fitbit" doc:id="0610ab1b-8649-4e82-bedc-44c14c813948" config-ref="HTTPS_Request_config_fitbit" path="/Patient/{id}/register">
+			<http:uri-params><![CDATA[#[output applicaton/java
+---
+{
+	"id" : vars.id
+}]]]></http:uri-params>
+			<http:query-params><![CDATA[#[output applicaton/java
+---
+{
+	"code" : vars.code
+}]]]></http:query-params>
+		</http:request>
 		<flow-ref doc:name="migrateAfterAuthorization" doc:id="f9ae26df-bf08-4b18-bbd9-d62457f198d4" name="migrateAfterAuthorizationSubFlow" />
-		<logger level="INFO" doc:name="!!! PUT REST CONNECT HERE !!!" doc:id="08a280f0-63aa-4d73-a2fc-b59cc8a79fe7" />
 	</sub-flow>
 	<sub-flow name="migrateAfterAuthorizationSubFlow" doc:id="abcb4a7e-076a-4f7b-a667-4e3533be2ea4" >
 		<logger level="INFO" doc:name="Log migrate historical data after authorization" doc:id="0f0e60d4-19ca-4606-9148-6caad4185c28" message="Migrate historical data after authorization"/>
-		<ee:transform doc:name="!!! PUT REST CONNECT HERE !!!" doc:id="fc3ae186-3ff6-4c30-8cec-0bd9cb0fc392">
-				<ee:message>
-					<ee:set-payload><![CDATA[%dw 2.0
-output application/json
+		<http:request method="GET" doc:name="GET Patient authorization status" doc:id="cf205714-ac51-4b8e-b241-a7709c80a75a" config-ref="HTTPS_Request_config_fitbit" path="/Patient/{id}">
+			<http:uri-params ><![CDATA[#[output applicaton/java
 ---
 {
-    "isAuthorized": true
-}]]></ee:set-payload>
-				</ee:message>
-			</ee:transform>
+	"id" : vars.id
+}]]]></http:uri-params>
+		</http:request>
 					<ee:transform doc:name="Transform Message to Java object" doc:id="95baa6db-52cc-4649-99ad-229584f83974">
 				<ee:message>
 					<ee:set-payload><![CDATA[%dw 2.0
@@ -34,53 +56,31 @@ payload]]></ee:set-payload>
 				</ee:message>
 			</ee:transform>
 					<validation:is-true doc:name="Validate if patient is authorized" doc:id="ef21d60a-8917-4c6e-a199-c16ee37a7c1d" config-ref="Validation_Config" expression="#[payload.isAuthorized]" message="Patient not authorized yet" />
-					<os:contains doc:name="Contains lastSyncDate" doc:id="661da9df-2397-4a66-85a2-1c4360b61fc7" key="#[vars.id]" objectStore="LastSyncDate_Config" />
-					<choice doc:name="Contains lastSyncDate?" doc:id="d75452ac-d087-4db4-bc0d-524b122ae7df">
-				<when expression="#[payload]">
-					<os:retrieve doc:name="Set lastSyncDate to fromDate variable" doc:id="a38f4e35-4a0d-4141-a052-11cb53192ec1" key="#[vars.id]" objectStore="LastSyncDate_Config" target="fromDate" />
-					<set-variable value='#["ge" ++ vars.fromDate]' doc:name="Modify fromDate to get data after that date" doc:id="3ec0c433-bdc0-4bec-a930-5c591edd5ebc" variableName="fromDate" />
-				</when>
-						<otherwise>
-					<set-variable value='#["ge" ++ (now() as String {format: "yyyy-MM-dd"})]' doc:name="Set default fromDate variable" doc:id="33c675f3-670e-4b73-b7f0-af764b2d1b9f" variableName="fromDate" />
-				</otherwise>
-			</choice>
-            <choice doc:name="Choice" doc:id="30ec2724-56a4-4b14-9c00-cb8a33056180" >
-						<when expression='#[(now() as String {format: "yyyy-MM-dd"}) != (vars.fromDate replace "ge" with "")]' >
-							<logger level="INFO" doc:name="Log migrate historical data since lastSyncDate" doc:id="0ddf4d16-91a4-4485-82bb-c566a1545e2d" message='Migrate historical data since #[vars.fromDate replace "ge" with ""]'/>
-							<flow-ref doc:name="migrateFitbitFitnessData" doc:id="7be17836-68f1-44c9-9c05-7ec08b5e16eb" name="migrateFitbitFitnessDataSubFlow"/>
-						</when>
-						<otherwise >
-							<logger level="INFO" doc:name="Log historical data migrated" doc:id="3e56f440-3f66-4de4-b612-18cf0e055aa5" message="Historical data are migrated"/>
-						</otherwise>
-					</choice>
+        <os:contains doc:name="Contains lastSyncDate" doc:id="661da9df-2397-4a66-85a2-1c4360b61fc7" key="#[vars.id]" objectStore="LastSyncDate_Config" />
+        <choice doc:name="Contains lastSyncDate?" doc:id="d75452ac-d087-4db4-bc0d-524b122ae7df">
+                <when expression="#[payload]">
+                    <os:retrieve doc:name="Set lastSyncDate to fromDate variable" doc:id="a38f4e35-4a0d-4141-a052-11cb53192ec1" key="#[vars.id]" objectStore="LastSyncDate_Config" target="fromDate" />
+                    <set-variable value='#["ge" ++ vars.fromDate]' doc:name="Modify fromDate to get data after that date" doc:id="3ec0c433-bdc0-4bec-a930-5c591edd5ebc" variableName="fromDate" />
+                </when>
+                        <otherwise>
+                    <set-variable value='#["eq" ++ (now() as String {format: "yyyy-MM-dd"})]' doc:name="Set default fromDate variable" doc:id="33c675f3-670e-4b73-b7f0-af764b2d1b9f" variableName="fromDate" />
+                </otherwise>
+            </choice>
+        <flow-ref doc:name="migrateFitbitFitnessData" doc:id="a7ab0e3c-959d-45c0-85ca-687546a58ed9" name="migrateFitbitFitnessDataSubFlow" />
+		<logger level="INFO" doc:name="Log migrate historical data since lastSyncDate" doc:id="f51a14f5-7b31-415d-8e06-0a6a5c1082c1" message='Migrate historical data since #[vars.fromDate replace "ge" with ""]' />
 	</sub-flow>
 	<sub-flow name="migrateFitbitFitnessDataSubFlow" doc:id="eac7a943-ad36-4b6a-9f02-842c878151d2">
 		<flow-ref doc:name="migrateDevices" doc:id="b8acbd80-ee26-45e0-8bd2-eea552af9af8" name="migrateDevicesSubFlow"/>
 		<flow-ref doc:name="migrateObservations" doc:id="72d021a7-37e7-485b-8e0c-ae7b637c31bc" name="migrateObservationsSubFlow"/>
 	</sub-flow>
 	<sub-flow name="migrateDevicesSubFlow" doc:id="0aabb028-48f3-4dae-a557-3ffda17bfb47" >
-		<ee:transform doc:name="!!! GET Devices from Fitbit !!!" doc:id="91102199-43db-41b7-83e4-6e78bc0710cb" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
+		<http:request method="GET" doc:name="GET Devices from Fitbit" doc:id="aded1f56-55c1-4c70-93b5-ebac9ca4e992" config-ref="HTTPS_Request_config_fitbit" path="/Patient/{id}/Device">
+			<http:uri-params ><![CDATA[#[output applicaton/java
 ---
 {
-    "resourceType": "Bundle",
-    "type": "searchset",
-    "link": [
-        {
-            "relation": "self",
-            "url": "http://localhost:8081/api/Patient/123456/Device"
-        }
-    ],
-    "meta": {
-        "lastUpdated": "2018-08-01T13:34:19.82+03:00"
-    },
-    "total": 0,
-    "entry": []
-}]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
+	"id" : vars.id
+}]]]></http:uri-params>
+		</http:request>
 		<ee:transform doc:name="Get Devices from the response" doc:id="b21b39bb-9b6d-43ea-8d1d-11316630338a">
 			<ee:message>
 				<ee:set-payload><![CDATA[%dw 2.0
@@ -91,15 +91,13 @@ if (payload.total > 0) payload.entry.resource else []]]></ee:set-payload>
 		</ee:transform>
 		<foreach doc:name="For Each Device" doc:id="fa76a692-c5ff-4b85-9c0c-2b0e76a317bb" collection="payload">
 			<set-variable value="#[payload]" doc:name="Set Device variable" doc:id="97f9d818-8ed4-4c60-b844-7e3944c49993" variableName="device" />
-			<ee:transform doc:name="!!! GET Device from SFDC !!!" doc:id="97e6fced-77e9-46de-9574-1667e6af136d" >
-				<ee:message >
-					<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
+			<http:request method="GET" doc:name="GET Device from SFDC" doc:id="062df4e1-c3f7-4781-a3c6-42834bb136f8" config-ref="HTTPS_Request_config_sfdc" path="/Device">
+				<http:query-params ><![CDATA[#[output applicaton/java
 ---
 {
-}]]></ee:set-payload>
-				</ee:message>
-			</ee:transform>
+	"identifier" : vars.device.identifier[0].value
+}]]]></http:query-params>
+			</http:request>
 			<ee:transform doc:name="Get existing Device Id from JSON response" doc:id="345f2a05-0219-4160-9b21-2acea0666824" >
 				<ee:message >
 				</ee:message>
@@ -121,7 +119,7 @@ output application/json
 vars.device]]></ee:set-payload>
 						</ee:message>
 					</ee:transform>
-					<logger level="INFO" doc:name="!!! POST Device into SFDC !!!" doc:id="9bcc5358-9770-4194-b8da-75f4d2075ed4" />
+					<http:request method="POST" doc:name="POST Device into SFDC" doc:id="59e48770-b13d-4ab8-bcb2-abff98e45a54" config-ref="HTTPS_Request_config_sfdc" path="/Device"/>
 				</when>
 				<otherwise >
 					<logger level="INFO" doc:name="Log PUT operation" doc:id="b2ab98d5-153a-4dc3-9141-4125858b42a1" message="PUTing Device: #[vars.device]"/>
@@ -133,91 +131,30 @@ output application/json
 vars.device ++ { "id" : vars.existingDeviceId }]]></ee:set-payload>
 						</ee:message>
 					</ee:transform>
-					<logger level="INFO" doc:name="!!! PUT Device into SFDC !!!" doc:id="caaa2fe4-c09a-450a-baa4-9184d7d858d4" />
+					<http:request method="PUT" doc:name="PUT Device into SFDC" doc:id="9bdde2c3-117f-4835-9d4e-475cc0e0eb90" config-ref="HTTPS_Request_config_sfdc" path="/Device/{id}">
+						<http:uri-params ><![CDATA[#[output applicaton/java
+---
+{
+	"id" : vars.existingDeviceId
+}]]]></http:uri-params>
+					</http:request>
 				</otherwise>
 			</choice>
 		</foreach>
 	</sub-flow>
 	<sub-flow name="migrateObservationsSubFlow" doc:id="d969aec4-60ff-417b-93a5-fee04969917e" >
-		<ee:transform doc:name="!!! PUT REST CONNECT HERE !!!" doc:id="7b452339-7ba7-4ab6-9f2c-3c074acf1c90" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
+		<http:request method="GET" doc:name="GET Observations from Fitbit" doc:id="829ad772-7a28-4dd4-b08e-8d6123f1a287" config-ref="HTTPS_Request_config_fitbit" path="/Patient/{id}/Observation">
+			<http:uri-params ><![CDATA[#[output applicaton/java
 ---
 {
-    "resourceType": "Bundle",
-    "type": "searchset",
-    "link": [
-        {
-            "relation": "self",
-            "url": "http://localhost:8081/api/Patient/123456/Observation"
-        }
-    ],
-    "meta": {
-        "lastUpdated": "2018-08-01T13:34:36.49+03:00"
-    },
-    "total": 2,
-    "entry": [
-        {
-            "fullUrl": "http://localhost:8081/api/Observation/noId",
-            "resource": {
-                "resourceType": "Observation",
-                "subject": {
-                    "reference": "Patient/123456"
-                },
-                "text": {
-                    "status": "empty",
-                    "div": ""
-                },
-                "effectiveDateTime": "2018-07-18",
-                "status": "final",
-                "code": {
-                    "coding": [
-                        {
-                            "system": "https://rtmms.nist.gov",
-                            "code": "0000000",
-                            "display": "MDC_HF_DISTANCE"
-                        }
-                    ]
-                },
-                "valueQuantity": {
-                    "value": "0",
-                    "unit": "MDC_DIM_STEP"
-                }
-            }
-        },
-        {
-            "fullUrl": "http://localhost:8081/api/Observation/noId",
-            "resource": {
-                "resourceType": "Observation",
-                "subject": {
-                    "reference": "Patient/123456"
-                },
-                "text": {
-                    "status": "empty",
-                    "div": ""
-                },
-                "effectiveDateTime": "2018-07-18",
-                "status": "final",
-                "code": {
-                    "coding": [
-                        {
-                            "system": "https://rtmms.nist.gov",
-                            "code": "0000000",
-                            "display": "MDC_HF_ACT_SLEEP"
-                        }
-                    ]
-                },
-                "valueQuantity": {
-                    "value": "0",
-                    "unit": "MDC_DIM_MIN"
-                }
-            }
-        }
-    ]
-}]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
+	"id" : vars.id
+}]]]></http:uri-params>
+			<http:query-params ><![CDATA[#[output applicaton/java
+---
+{
+	"date" : vars.fromDate
+}]]]></http:query-params>
+		</http:request>
 		<ee:transform doc:name="Get Observations from the response" doc:id="d49134c2-e7ef-47fd-95b4-b639d54dc5ae" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
@@ -237,26 +174,29 @@ output application/json
 payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-			<logger level="INFO" doc:name="!!! POST Observation to SFDC !!!" doc:id="707462d7-8657-47b4-a389-fb1d24218d19" />
+			<http:request method="POST" doc:name="POST Observation to SFDC" doc:id="18215803-5e90-49b5-94e2-cc04c2c0e32a" config-ref="HTTPS_Request_config_sfdc" path="/Observation"/>
 			<os:store doc:name="Store LastSyncDate" doc:id="7bdd7094-559b-4d3f-96c1-edb721f40bb7" key="#[vars.id]" objectStore="LastSyncDate_Config">
 				<os:value ><![CDATA[#[vars.fromDate]]]></os:value>
 			</os:store>
 		</foreach>
 	</sub-flow>
 	<sub-flow name="getPatientsByIdSubFlow" doc:id="19b565d0-2634-4087-bead-4cf865690a25">
-		<ee:transform doc:name="!!! GET Patient authorization status !!!" doc:id="b0d25d6d-d623-4ace-bb7e-78c1d12110a7" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
+		<http:request method="GET" doc:name="GET Patient authorization status" doc:id="8d0b8642-1f10-49fb-b3de-4f7852d05eff" config-ref="HTTPS_Request_config_fitbit" path="/Patient/{id}">
+			<http:uri-params ><![CDATA[#[output applicaton/java
 ---
 {
-    "isAuthorized": true
-}]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
+	"id" : attributes.uriParams.id
+}]]]></http:uri-params>
+		</http:request>
 	</sub-flow>
 	<sub-flow name="unauthorizePatientByIdSubFlow" doc:id="7a49cc1e-0090-4ae0-ab16-fffc0c8d318b">
-		<logger level="INFO" doc:name="!!! GET unauthorize call to Fitbit !!!" doc:id="15c1c247-2a59-463f-b320-2f8b3da10bdb" message="unauthorizePatientByIdSub_Flow" />
+		<http:request method="GET" doc:name="GET unauthorize call to Fitbit" doc:id="517f2eae-43fd-4e1f-b9f4-d34e674abc7c" config-ref="HTTPS_Request_config_fitbit" path="/Patient/{id}/unauthorize">
+			<http:uri-params ><![CDATA[#[output applicaton/java
+---
+{
+	"id" : attributes.uriParams.id
+}]]]></http:uri-params>
+		</http:request>
 	</sub-flow>
 	<flow name="syncFitbitFitnessDataSubFlow" doc:id="6dea9337-2c93-4c86-945d-f04503162d17" >
 		<scheduler doc:name="Scheduler" doc:id="697c850d-3717-47e4-8571-a273273d3d17" >
@@ -265,16 +205,7 @@ output application/json
 			</scheduling-strategy>
 		</scheduler>
 		<logger level="INFO" doc:name="Log poll for changes from Fitbit" doc:id="9303ab55-cb61-4aa2-986c-8afd8ea2bd61" message='Polling changes from Fitbit .... date : #[now() as String {format: "yyyy-MM-dd"}]'/>
-		<ee:transform doc:name="!!! GET authorized Patients from Fitbit !!!" doc:id="4a2bde5a-148d-45d5-9070-6bf1f9bcaf78" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
----
-{
-	"patients" : ["123456"]
-}]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
+		<http:request method="GET" doc:name="GET authorized Patients from Fitbit" doc:id="32cbdb97-e6c0-439e-a1a8-e6184711ae4b" config-ref="HTTPS_Request_config_fitbit" path="/Patient"/>
 		<ee:transform doc:name="Get Patients from the response" doc:id="22629344-8e09-4672-8f95-fd78d6533094" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0

@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:os="http://www.mulesoft.org/schema/mule/os"
-    xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
-    xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+    xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+    xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="
 http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd 
 http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
@@ -25,6 +24,17 @@ http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/
     <tls:context name="TLS_Context" doc:name="TLS Context" doc:id="7bf21f3a-d8e6-46e0-bb12-0dc260d38a08">
         <tls:key-store type="jks" path="${keystore.location}" alias="${key.alias}" keyPassword="${key.password}" password="${keystore.password}" />
     </tls:context>
+
+    <http:request-config name="HTTPS_Request_config_fitbit" doc:name="HTTP Request configuration" doc:id="333fb97e-9ed6-4f18-9e0f-0e33b89caf5d"
+        basePath="${fitbit2fhir.system.api.basePath}">
+        <http:request-connection host="${fitbit2fhir.system.api.host}" port="${fitbit2fhir.system.api.port}"
+            protocol="HTTPS" />
+    </http:request-config>
+
+    <http:request-config name="HTTPS_Request_config_sfdc" doc:name="HTTP Request configuration" doc:id="4966b15c-95b0-40a4-bf91-96e5184788dd"
+        basePath="${sfdc.system.api.basePath}">
+        <http:request-connection host="${sfdc.system.api.host}" port="${sfdc.system.api.port}" />
+    </http:request-config>
 
     <apikit:config name="healthcare-fitness2crm-sync-process-api-config" raml="healthcare-fitness2crm-sync-process-api.raml"
         outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
