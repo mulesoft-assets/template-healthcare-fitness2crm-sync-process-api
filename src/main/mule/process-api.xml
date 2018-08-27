@@ -140,27 +140,12 @@ output application/json
         </error-handler>
     </flow>
     <flow name="get:\patients\(id):healthcare-fitness2crm-sync-process-api-config">
-        <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" doc:id="50a31ee7-63e6-460a-9a21-98eed07134e1">
-            <ee:variables>
-                <ee:set-variable variableName="id"><![CDATA[attributes.uriParams.id]]></ee:set-variable>
-            </ee:variables>
-        </ee:transform>
         <flow-ref doc:name="getPatientsById" doc:id="11be7dad-44b7-441b-8609-ddfe5411b2e3" name="getPatientsByIdSubFlow" />
     </flow>
     <flow name="get:\patients\(id)\register:healthcare-fitness2crm-sync-process-api-config">
-        <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" doc:id="f1885f90-7794-44d7-afb4-b51b3e60f1bc">
-            <ee:variables>
-                <ee:set-variable variableName="id"><![CDATA[attributes.uriParams.id]]></ee:set-variable>
-            </ee:variables>
-        </ee:transform>
         <flow-ref doc:name="registerPatientById" doc:id="544c472d-26a8-46c1-b5db-9ca13530c5fb" name="registerPatientByIdSubFlow" />
     </flow>
     <flow name="get:\patients\(id)\unauthorize:healthcare-fitness2crm-sync-process-api-config">
-        <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" doc:id="ea40411f-db03-4147-bd31-bc298a412dc1">
-            <ee:variables>
-                <ee:set-variable variableName="id"><![CDATA[attributes.uriParams.id]]></ee:set-variable>
-            </ee:variables>
-        </ee:transform>
         <flow-ref doc:name="unauthorizePatientById" doc:id="aa5191af-b9d4-4d30-8880-df08251579ec" name="unauthorizePatientByIdSubFlow" />
     </flow>
 </mule>
