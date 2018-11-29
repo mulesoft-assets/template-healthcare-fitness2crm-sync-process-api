@@ -12,7 +12,7 @@ http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/cu
 http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
 http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
 
-
+	<global-property doc:name="Global Property" doc:id="7693d88b-ce16-4637-9e0a-bd351121d36b" name="mule.env" value="dev" />
     <configuration-properties doc:name="Configuration properties" doc:id="b23a56fd-6baa-4203-8cee-c218cff0b23d"
         file="common.properties" />
     <configuration-properties doc:name="Configuration properties" doc:id="91b9a5c6-8ffe-466f-bb78-dd1d7de151d9"
@@ -46,5 +46,4 @@ http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/m
     <os:object-store name="LastSyncDate_Config" doc:name="Object store" doc:id="f7c3a910-2450-44bf-b157-ccf5df22f51a"
         config-ref="LastSyncDate_Config_Connector" persistent="false"/>
 	<api-gateway:autodiscovery apiId="${api.id}" doc:name="API Autodiscovery" doc:id="5f35dea2-6b46-467a-a52d-c8f6d7e0af17" flowRef="healthcare-fitness2crm-sync-process-api-main" />
-	<global-property doc:name="Global Property" doc:id="00d11cf7-be8d-4647-ad30-77d80b27f5d3" name="mule.env" value="dev" />
 </mule>
