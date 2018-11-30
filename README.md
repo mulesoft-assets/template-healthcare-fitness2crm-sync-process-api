@@ -22,7 +22,7 @@ Please review the terms of the license before downloading and using this templat
 
 As a FitBit user I want a microservice to synchronize Device and Observation data between FitBit system and CRM (e.g. Salesforce Health Cloud).
 
-Fitness to CRM Sync Process API is part of the Healthcare Templates Solution. This template calls FitBit System API to register Patient on Fitbit system. After Patient is registered, data are migrated and scheduler once a day retrieve required data from FitBit through the FitBit System API and migrate them to CRM system using the standardized FHIR structures [version 1.0.2 DSTU2](https://www.hl7.org/FHIR/DSTU2/index.html).
+Fitness to CRM Sync Process API is part of the Healthcare Templates Solution. This template calls FitBit System API to register Patient on Fitbit system. After Patient is registered, data are migrated and scheduler once a day retrieve required data from FitBit through the FitBit System API and migrate them to CRM system using the standardized FHIR structures [version 3.0.1 STU3](https://www.hl7.org/FHIR/index.html).
 
 # Considerations <a name="considerations"/>
 
@@ -100,12 +100,6 @@ In order to use this Mule Anypoint Template you need to configure properties (AP
 + key.password `password123`
 + key.alias `1`
 
-+ truststore.location `truststore`
-+ truststore.password `pass123`
-
-+ api.version `api_version`
-+ api.name `api_name`
 + api.id `api_id`
-
 + anypoint.platform.client_id `anypoint_platform_client_id`
 + anypoint.platform.client_secret `anypoint_platform_client_secret`
